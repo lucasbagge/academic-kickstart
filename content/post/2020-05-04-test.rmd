@@ -1,0 +1,16 @@
+---
+title: "react-class-based-components"
+author: "omar gonzales diaz"
+date: "4/26/2019"
+output: html_document
+---
+
+
+# Introduction
+
+I will make a test to see if thing are working fine
+
+```{r}
+2 + 2
+```
+
