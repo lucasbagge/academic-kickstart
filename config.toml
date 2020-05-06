@@ -22,6 +22,9 @@ copyright = "&copy; Julia Silge {year}"
 # Get last modified date for content from Git?
 enableGitInfo = false
 
+color_theme = "ocean"
+font = "playfair"
+
 # Default language to use (if you setup multilingual support)
 defaultContentLanguage = "en"
 hasCJKLanguage = false  # Set `true` for Chinese/Japanese/Korean languages.
