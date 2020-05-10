@@ -18,7 +18,8 @@ organizations:
   url: ""
 
 # Short bio (displayed in user profile at end of posts)
-bio:  I am glad to introduce the new Digital Marketing team. We are our a new team of four with a Gro specialist, Data Scientist and our "My Captain - Dead Poets Society" Henri. We want to contribued to a deeper understand of the online sales though our special knowleged. 
+bio: For any question regarding data, coding and small talk you can
+always reach out to me.
 
 
 # interests:
@@ -59,4 +60,4 @@ user_groups:
 - Visitors
 ---
 
-I am glad to introduce the new Digital Marketing team. We are our a new team of four with a Gro specialist, Data Scientist and our "My Captain - Dead Poets Society" Henri. We want to contribued to a deeper understand of the online sales though our special knowleged. 
+I am glad to introduce the new Digital Marketing team. We are our a new team of four with a Gro specialist, Data Scientist and our "My Captain - Dead Poets Society" Henri. We want to contributed to a deeper understand of the online sales though our special knowleged.  

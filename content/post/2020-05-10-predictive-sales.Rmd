@@ -1,5 +1,5 @@
 ---
-title: Predictive sales
+title: Predictive Sales
 author: Lucas Bagge
 date: '2020-05-10'
 slug: predictive-sales
@@ -12,7 +12,7 @@ tags:
   - PnBD 
   - BGnBD 
   - CLV
-subtitle: 'A introduction to the new digital team'
+subtitle: 'A introduction to the new Digital Team'
 summary: 'For this post we are gonna try using a online data to predict
 consumers behavior based on the models "Pareto Negative Binomial Distribution" 
 and "Beta Geometric Negative Binomial Distribution"'
@@ -402,7 +402,7 @@ bgnbd.PlotFrequencyInCalibration(params_bgnbd,cal.cbs,3)
 
 This plot shows the actual and expected number of customers who made repeat transactions in the caliberation period binned as per frequencies The difference between PNBD and BGNBD models is not much in this case
 
-## model vs actual: test (holdout) test period
+## Model vs actual: test (holdout) test period
 
 The frequency plot above shows that the models perform alright in the caliberation period. But that does not mean that the models are good. To test the performance of the model, it is important to see how they perform in the holdout/test period.
 
