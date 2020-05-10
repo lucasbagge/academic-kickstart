@@ -10,26 +10,27 @@ authors:
 superuser: true
 
 # Role/position
-role: Jr. Data Scientist
+role: Data Scientist
 
 # Organizations/Affiliations
 organizations:
-- name: Innovation
+- name: Magasin
   url: ""
 
 # Short bio (displayed in user profile at end of posts)
-bio: My research interests include explanatory data, consumer behavior, energy, econometric and Machine Learning
+bio:  I am glad to introduce the new Digital Marketing team. We are our a new team of four with a Gro specialist, Data Scientist and our "My Captain - Dead Poets Society" Henri. We want to contribued to a deeper understand of the online sales though our special knowleged. 
 
-interests:
-- Datamining
-- Econometrics
-- Machine learning
 
-education:
-  courses:
-  - course: Nomination for best bachelor in Economics
-    institution: SDU
-    year: 2019
+# interests:
+# - Datamining
+# - Econometrics
+# - Machine learning
+# 
+# education:
+#   courses:
+#   - course: Nomination for best bachelor in Economics
+#     institution: SDU
+#     year: 2019
 
 # Social/Academic Networking
 # For available icons, see: https://sourcethemes.com/academic/docs/page-builder/#icons
@@ -58,4 +59,4 @@ user_groups:
 - Visitors
 ---
 
-Lucas Bagge is a Jr. Data Scientist.
+I am glad to introduce the new Digital Marketing team. We are our a new team of four with a Gro specialist, Data Scientist and our "My Captain - Dead Poets Society" Henri. We want to contribued to a deeper understand of the online sales though our special knowleged. 

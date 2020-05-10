@@ -1,0 +1,1017 @@
+---
+title: Predictive sales
+author: Lucas Bagge
+date: '2020-05-10'
+slug: predictive-sales
+categories:
+  - Machine learning
+  - Sales
+  - Online
+tags:
+  - ML
+  - PnBD 
+  - BGnBD 
+  - CLV
+subtitle: 'A introduction to the new digital team'
+summary: 'For this post we are gonna try using a online data to predict
+consumers behavior based on the models "Pareto Negative Binomial Distribution" 
+and "Beta Geometric Negative Binomial Distribution"'
+authors: []
+lastmod: '2020-05-10T06:52:36+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+
+
+<div id="abstract" class="section level1">
+<h1>Abstract</h1>
+<p>For this analysis we are using a online shop data set to make a model to predict
+the next purchase per consumer and estimate value per consumer over the next
+period. To look at this we use a <strong>Parameter pareto/Negative Binomial Distribution</strong>
+and a <strong>Parameter beta negative binomial distribution</strong> model. From the result we
+can see that for most of the consumer the next purchase would be in the next
+three month and we can expect the CLV will be growing over time.</p>
+</div>
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>There is often a problem in a B2C setting to capture the pattern of the
+customer. Here the business can neglect the customer because they dont understand
+the actual value.</p>
+<p>Here there is the need to figure out the spend level for acquring a new customers.
+And how to different segemnt interact with the product. There is also the question of how
+well does one product do in the market where the face a hard competition.
+Is there a way to increase the demand and make the most out of each customer?</p>
+<p>Understanding a customer is the most essentiel for every business but it is a hard
+task and there is need for a lot of data analysis to help.</p>
+<p>A popular method is <strong>Estimating lifetime value</strong>. It is also called CLV and it is the
+present value of future cash flows added to the customer during a period. For this
+method the business get an idea of the revenue from each customer in a given time frame.
+The best way of using CLV is to use data and models. Here we want to fit probalistic models
+to a historical data set.</p>
+<p>By using CLV we get a understanding of how much we should spend on acquring customer.
+The method also allows us to predict demand for different product and customer segment.</p>
+</div>
+<div id="clv-analysis" class="section level1">
+<h1>CLV Analysis</h1>
+<p>The data is from a online shop and contaions transaction occuring from 01/12/2010 and 09/12/2011.
+For this analysis the team want to se the lifetime value of each customer and predict when
+and how much a customer buy next.</p>
+<div id="attribute-information" class="section level2">
+<h2>Attribute information</h2>
+<p>The hole data includes 351031 observations and 13 variables.</p>
+<pre class="r"><code># Read the data
+data &lt;- read.csv(&quot;data_sales.csv&quot;,
+  stringsAsFactors = F
+)
+# Fix the date
+data &lt;- data %&gt;%
+  mutate(InvoiceDate = as.Date(as.POSIXct(InvoiceDate, format = &quot;%m/%d/%Y %H:%M&quot;))) %&gt;%
+  drop_na()
+str(data)</code></pre>
+<pre><code>## &#39;data.frame&#39;:    403182 obs. of  8 variables:
+##  $ InvoiceNo  : chr  &quot;536365&quot; &quot;536365&quot; &quot;536365&quot; &quot;536365&quot; ...
+##  $ StockCode  : chr  &quot;85123A&quot; &quot;71053&quot; &quot;84406B&quot; &quot;84029G&quot; ...
+##  $ Description: chr  &quot;WHITE HANGING HEART T-LIGHT HOLDER&quot; &quot;WHITE METAL LANTERN&quot; &quot;CREAM CUPID HEARTS COAT HANGER&quot; &quot;KNITTED UNION FLAG HOT WATER BOTTLE&quot; ...
+##  $ Quantity   : int  6 6 8 6 6 2 6 6 6 32 ...
+##  $ InvoiceDate: Date, format: &quot;2010-12-01&quot; &quot;2010-12-01&quot; ...
+##  $ UnitPrice  : num  2.55 3.39 2.75 3.39 3.39 7.65 4.25 1.85 1.85 1.69 ...
+##  $ CustomerID : int  17850 17850 17850 17850 17850 17850 17850 17850 17850 13047 ...
+##  $ Country    : chr  &quot;United Kingdom&quot; &quot;United Kingdom&quot; &quot;United Kingdom&quot; &quot;United Kingdom&quot; ...</code></pre>
+<ul>
+<li><code>InvoiceNo</code> Invoice number. Nominal, a 6-digit integral number uniquely assigned to each transaction.</li>
+<li><code>StockCode</code> Product (item) code. Nominal, a 5-digit integral number uniquely assigned to each distinct product.</li>
+<li><code>Description</code> Product (item) name. Nominal.</li>
+<li><code>Quantity</code> The quantities of each product (item) per transaction. Numeric.</li>
+<li><code>InvoiceDate</code> Invoice Date and time. Numeric, the day and time when each transaction was generated.</li>
+<li><code>UnitPrice</code> Unit price. Numeric, Product price per unit in sterling.</li>
+<li><code>CustomerID</code> Customer number. Nominal, a 5-digit integral number uniquely assigned to each customer.</li>
+<li><code>Country</code> Country name. Nominal, the name of the country where each customer resides.</li>
+</ul>
+</div>
+<div id="data-cleaning" class="section level2">
+<h2>Data cleaning</h2>
+<p>For a couple of the product there is assiocates a negative quantity and we have choosen
+to exlude them.</p>
+<p>For making our model and analysis we need to use the famouse <strong>RFM</strong> marketing
+technique, which is used to determine quantitatively which customers are the best ones by examining how recently a customer has purchased (recency), how often they purchase (frequency), and how much the customer spends (monetary).</p>
+<p>We also want to Feature engineering reaping customer.</p>
+<pre class="r"><code># 1. Get Recency, First purchase and last purchase made by customers and the total value of each transaction (QTY*PRICE)
+max_InvoiceDate &lt;- max(data$InvoiceDate)
+# today = max_InvoiceDate+2
+data &lt;- data %&gt;%
+  group_by(CustomerID) %&gt;%
+  mutate(
+    Recency = max_InvoiceDate - max(InvoiceDate),
+    First_purchase = max_InvoiceDate - min(InvoiceDate),
+    Value = Quantity * UnitPrice,
+    Frequency = n_distinct(InvoiceNo)
+  ) %&gt;%
+  arrange(InvoiceDate) %&gt;%
+  ungroup()
+
+# 2. Filter out Qty &lt; 0
+neg &lt;- data %&gt;%
+  filter(Quantity &lt; 0)
+data &lt;- data %&gt;%
+  filter(Quantity &gt;= 0)
+
+# 3. Get customers with repeat transactions
+data &lt;- data %&gt;%
+  group_by(CustomerID) %&gt;%
+  mutate(repeat_customers = ifelse(n_distinct(InvoiceNo) &gt; 1, n_distinct(InvoiceNo), 0)) %&gt;%
+  ungroup()
+
+# 4. Get the country with the most customer.
+data &lt;- data %&gt;%
+  filter(Country == &quot;United Kingdom&quot;)</code></pre>
+</div>
+</div>
+<div id="explanatory-data" class="section level1">
+<h1>Explanatory data</h1>
+<p>When of the central aspect of Data Scientist is to investigate your data. This
+path will contributed to understand how our data looks like.</p>
+<div id="summary" class="section level2">
+<h2>Summary</h2>
+<pre class="r"><code>ucl_summary &lt;- data %&gt;%
+  group_by(CustomerID) %&gt;%
+  summarize(
+    Last_purchase = max(InvoiceDate),
+    First_purchase = min(InvoiceDate),
+    Frequency = n_distinct(InvoiceNo),
+    Sales = mean(Value),
+    repeat_customers = ifelse(mean(repeat_customers) &gt; 0,
+      1,
+      0
+    )
+  )
+
+ucl_summary &lt;- ucl_summary %&gt;%
+  mutate(
+    time_between = Last_purchase - First_purchase,
+    recency = abs(max_InvoiceDate - Last_purchase)
+  )
+head(ucl_summary) %&gt;%
+  kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">CustomerID</th>
+<th align="left">Last_purchase</th>
+<th align="left">First_purchase</th>
+<th align="right">Frequency</th>
+<th align="right">Sales</th>
+<th align="right">repeat_customers</th>
+<th align="left">time_between</th>
+<th align="left">recency</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">12346</td>
+<td align="left">2011-01-18</td>
+<td align="left">2011-01-18</td>
+<td align="right">1</td>
+<td align="right">77183.600000</td>
+<td align="right">0</td>
+<td align="left">0 days</td>
+<td align="left">325 days</td>
+</tr>
+<tr class="even">
+<td align="right">12747</td>
+<td align="left">2011-12-07</td>
+<td align="left">2010-12-05</td>
+<td align="right">11</td>
+<td align="right">40.737961</td>
+<td align="right">1</td>
+<td align="left">367 days</td>
+<td align="left">2 days</td>
+</tr>
+<tr class="odd">
+<td align="right">12748</td>
+<td align="left">2011-12-09</td>
+<td align="left">2010-12-01</td>
+<td align="right">210</td>
+<td align="right">7.321692</td>
+<td align="right">1</td>
+<td align="left">373 days</td>
+<td align="left">0 days</td>
+</tr>
+<tr class="even">
+<td align="right">12749</td>
+<td align="left">2011-12-06</td>
+<td align="left">2011-05-10</td>
+<td align="right">5</td>
+<td align="right">20.535939</td>
+<td align="right">1</td>
+<td align="left">210 days</td>
+<td align="left">3 days</td>
+</tr>
+<tr class="odd">
+<td align="right">12820</td>
+<td align="left">2011-12-06</td>
+<td align="left">2011-01-17</td>
+<td align="right">4</td>
+<td align="right">15.971864</td>
+<td align="right">1</td>
+<td align="left">323 days</td>
+<td align="left">3 days</td>
+</tr>
+<tr class="even">
+<td align="right">12821</td>
+<td align="left">2011-05-09</td>
+<td align="left">2011-05-09</td>
+<td align="right">1</td>
+<td align="right">15.453333</td>
+<td align="right">0</td>
+<td align="left">0 days</td>
+<td align="left">214 days</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>print(paste(&quot;Total number of customers transacted in the given period = &quot;, nrow(ucl_summary)))</code></pre>
+<pre><code>## [1] &quot;Total number of customers transacted in the given period =  4337&quot;</code></pre>
+</div>
+<div id="proportion-of-repeat" class="section level2">
+<h2>Proportion of repeat</h2>
+<pre class="r"><code>recency_prop &lt;- 100 * table(as.factor(ucl_summary$repeat_customers)) / sum(table(as.factor(ucl_summary$repeat_customers)))
+print(recency_prop)</code></pre>
+<pre><code>## 
+##        0        1 
+## 34.47308 65.52692</code></pre>
+<p>There is a big portion of the customer that make more transaction for being more
+precise there is 66% that make more transaction.</p>
+</div>
+<div id="days-between" class="section level2">
+<h2>Days between</h2>
+<pre class="r"><code>library(plyr)
+purchaseFreq &lt;- ddply(data %&gt;%
+  filter(Frequency &gt; 1),
+.(CustomerID),
+summarize,
+daysBetween = as.numeric(diff(InvoiceDate))
+)
+detach(package:plyr)
+
+library(grDevices)
+library(dplyr)
+ggplot(
+  purchaseFreq %&gt;%
+    filter(daysBetween &gt; 0),
+  aes(x = daysBetween)
+) +
+  geom_histogram(fill = &quot;orange&quot;) +
+  xlab(&quot;Time between purchases (days)&quot;) +
+  theme_minimal()</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-6-1.png" width="2400" /></p>
+<p>This plot shows that with time, the number of repeat transactions reduces.</p>
+</div>
+<div id="time-gap-and-frequency" class="section level2">
+<h2>time gap and frequency</h2>
+<pre class="r"><code>ggplot(
+  ucl_summary %&gt;%
+    filter(Frequency &gt; 1),
+  aes(
+    x = time_between,
+    y = Frequency,
+    color = as.factor(repeat_customers)
+  )
+) +
+  geom_point() +
+  ylim(0, 50) +
+  theme_minimal()</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-7-1.png" width="2400" /></p>
+<p>If the time-gap between first and last transaction is large, the mean frequency of purchase is also high.</p>
+</div>
+</div>
+<div id="pnbd-and-bgnbd-models" class="section level1">
+<h1>PnBD and BGnBD Models</h1>
+<p>The <strong>Pareto Negative Binomial Distribution model</strong> draws inferences about a customer’s state based on their transaction frequency and the observed elapsed time since a customer’s last activity. The model assumes a customer’s lifetime τ to be exponentially distributed with parameter µ, where µ is Gamma(s, β)-distributed across customers.</p>
+<p>The basic Pareto/NBD model simulates two events. It uses a “coin” to determine whether a customer churns and then it uses “dice” to determine how many items a customer will order. The coin is modeled using a Pareto distribution and the dice are modeled using a negative binomial distribution. The more information you have on a customer, the better the models can fit them to a specific distribution and the more accurate the predictions end up being.</p>
+<p>In probability theory, a <strong>beta negative binomial distribution</strong> is the probability distribution of a discrete random variable X equal to the number of failures needed to get r successes in a sequence of independent Bernoulli trials where the probability p of success on each trial is constant within any given experiment but is itself a random variable following a beta distribution, varying between different experiments. Thus the distribution is a compound probability distribution.</p>
+<div id="function-to-be-used" class="section level2">
+<h2>Function to be used</h2>
+<p>For using the two mentions models I needed to make some furthere prepation of the data:</p>
+<pre class="r"><code>library(BTYD)
+# Data prep for btyd::
+
+# 1) Select only required columns for btyd:: cust, date and sales
+ucl_log &lt;- data %&gt;%
+  ungroup() %&gt;%
+  select(
+    cust = CustomerID,
+    date = InvoiceDate,
+    sales = Value
+  )
+
+# Merge all transactions happening on the same day for each customer
+ucl_log_sum &lt;- dc.MergeTransactionsOnSameDate(ucl_log)
+
+# Seperate training period and holdout period
+# Split dataset (50-50)
+threshold_date &lt;- unique(data$InvoiceDate)[round(length(unique(data$InvoiceDate)) * 0.5)]
+ucl.cal &lt;- ucl_log_sum %&gt;%
+  filter(date &lt;= threshold_date)
+
+# Seperate repeat customers
+split.repeat &lt;- dc.SplitUpElogForRepeatTrans(ucl.cal)
+clean.repeat &lt;- split.repeat$repeat.trans.elog
+
+### Analysis for repeat customers on a day-day basis################
+# See number of transactions made by a customer on each day
+freq.cbt &lt;- dc.CreateFreqCBT(clean.repeat)
+
+# See if a customer made any transaction on that day
+reach.cbt &lt;- dc.CreateReachCBT(clean.repeat)
+
+# See total money spent by customer on each day
+spend.cbt &lt;- dc.CreateSpendCBT(clean.repeat)
+##################################################
+
+# Bring back customers who made no transactions in the given period
+tot.cbt.freq &lt;- dc.CreateFreqCBT(ucl.cal)
+tot.cbt.reach &lt;- dc.CreateReachCBT(ucl.cal)
+tot.cbt.sales &lt;- dc.CreateSpendCBT(ucl.cal)
+
+ucl.cbt.freq &lt;- dc.MergeCustomers(tot.cbt.freq, freq.cbt)
+ucl.cbt.reach &lt;- dc.MergeCustomers(tot.cbt.reach, reach.cbt)
+ucl.cbt.spend &lt;- dc.MergeCustomers(tot.cbt.sales, spend.cbt)
+
+## Building rf table
+birth.periods &lt;- split.repeat$cust.data$birth.per
+last.dates &lt;- split.repeat$cust.data$last.date
+cal.cbs.dates &lt;- data.frame(birth.periods, last.dates, threshold_date)
+cal.cbs &lt;- dc.BuildCBSFromCBTAndDates(ucl.cbt.freq, cal.cbs.dates, per = &quot;day&quot;)</code></pre>
+</div>
+<div id="parameter-paretonegative-binomial-distribution" class="section level2">
+<h2>Parameter pareto/negative binomial distribution</h2>
+<pre class="r"><code>## Parameter Estimates: Pareto/Negative Binomial Distribution model:
+params &lt;- pnbd.EstimateParameters(cal.cbs)
+LL &lt;- pnbd.cbs.LL(params, cal.cbs)
+# Run multiple iterations to get optimal parameters
+p.matrix &lt;- c(params, LL)
+for (i in 1:10) {
+  params &lt;- pnbd.EstimateParameters(cal.cbs, params)
+  LL &lt;- pnbd.cbs.LL(params, cal.cbs)
+  p.matrix.row &lt;- c(params, LL)
+  p.matrix &lt;- rbind(p.matrix, p.matrix.row)
+}
+colnames(p.matrix) &lt;- c(&quot;r&quot;, &quot;alpha&quot;, &quot;s&quot;, &quot;beta&quot;, &quot;LL&quot;)
+rownames(p.matrix) &lt;- 1:nrow(p.matrix)
+p.matrix %&gt;%
+  kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">r</th>
+<th align="right">alpha</th>
+<th align="right">s</th>
+<th align="right">beta</th>
+<th align="right">LL</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.7356963</td>
+<td align="right">61.75235</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7356819</td>
+<td align="right">61.75317</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356814</td>
+<td align="right">61.75269</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7356774</td>
+<td align="right">61.75272</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356775</td>
+<td align="right">61.75242</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7356744</td>
+<td align="right">61.75241</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356747</td>
+<td align="right">61.75221</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7356722</td>
+<td align="right">61.75218</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356725</td>
+<td align="right">61.75203</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7356705</td>
+<td align="right">61.75200</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356708</td>
+<td align="right">61.75190</td>
+<td align="right">1e-07</td>
+<td align="right">17.80244</td>
+<td align="right">-20075.38</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="parameter-beta-negative-binomial-distribution" class="section level2">
+<h2>Parameter beta negative binomial distribution</h2>
+<pre class="r"><code>## Estimating model parameters beta negative binomial distribution
+# Parameters are estimated by maximising log-likelihood
+# start params = (1,1,1,1)
+params_bgnbd &lt;- bgnbd.EstimateParameters(cal.cbs, par.start = c(1, 1, 1, 2))
+
+LL &lt;- bgnbd.cbs.LL(params_bgnbd, cal.cbs)
+# Run multiple iterations to get optimal parameters
+p.matrix_bgnd &lt;- c(params_bgnbd, LL)
+
+for (i in 1:10) {
+  params_bgnbd &lt;- bgnbd.EstimateParameters(cal.cbs, params_bgnbd)
+  LL &lt;- bgnbd.cbs.LL(params_bgnbd, cal.cbs)
+  p.matrix_bgnd.row &lt;- c(params_bgnbd, LL)
+  p.matrix_bgnd &lt;- rbind(p.matrix_bgnd, p.matrix_bgnd.row)
+}
+colnames(p.matrix_bgnd) &lt;- c(&quot;r&quot;, &quot;alpha&quot;, &quot;a&quot;, &quot;beta&quot;, &quot;LL&quot;)
+rownames(p.matrix_bgnd) &lt;- 1:nrow(p.matrix_bgnd)
+p.matrix_bgnd %&gt;%
+  kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">r</th>
+<th align="right">alpha</th>
+<th align="right">a</th>
+<th align="right">beta</th>
+<th align="right">LL</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.7356340</td>
+<td align="right">61.77366</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.721</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7357672</td>
+<td align="right">61.76106</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.721</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356680</td>
+<td align="right">61.75273</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.722</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7356733</td>
+<td align="right">61.75224</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.722</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356730</td>
+<td align="right">61.75202</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.722</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7356712</td>
+<td align="right">61.75204</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.722</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356712</td>
+<td align="right">61.75190</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.722</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7356698</td>
+<td align="right">61.75190</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.723</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356698</td>
+<td align="right">61.75188</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.723</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="even">
+<td align="right">0.7356698</td>
+<td align="right">61.75188</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.723</td>
+<td align="right">-20075.38</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7356698</td>
+<td align="right">61.75188</td>
+<td align="right">0.0001431</td>
+<td align="right">1351.723</td>
+<td align="right">-20075.38</td>
+</tr>
+</tbody>
+</table>
+<p>The heterogeneity plot is a distribution of each customer’s exponential parameter that determines their lifetime. The mean dropout rate calculated at 12%. This is approximately the mean of the Survival Probability distribution, which agrees with the Pareto/NBD assumption that a customer’s lifetime can be modeled with an exponential distribution.</p>
+<p>The plot above shows that customers are more likely to have low values of individual poisson transaction process parameters. It shows that only a few customers have high transaction rate. This validates the heteroginity across customer transactions. Repeat customer buy around their own mean of purchasing time. The timegap between purchases would be different for different customers.</p>
+<pre class="r"><code>pnbd.PlotTransactionRateHeterogeneity(params) ## gamma distribution</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-11-1.png" width="2400" /></p>
+<pre><code>##               [,1]         [,2]         [,3]         [,4]         [,5]
+## x.axis.ticks     0 6.490486e-04  0.001298097  0.001947146  0.002596194
+## heterogeneity  Inf 1.115257e+02 89.206724435 76.991897759 68.550962853
+##                       [,6]         [,7]        [,8]         [,9]        [,10]
+## x.axis.ticks   0.003245243  0.003894292  0.00454334  0.005192389  0.005841437
+## heterogeneity 62.085602853 56.840053198 52.42663367 48.620172474 45.278171183
+##                      [,11]        [,12]        [,13]        [,14]       [,15]
+## x.axis.ticks   0.006490486  0.007139535  0.007788583  0.008437632  0.00908668
+## heterogeneity 42.304573718 39.631409164 37.208690097 34.998483618 32.97124624
+##                      [,16]       [,17]       [,18]       [,19]       [,20]
+## x.axis.ticks   0.009735729  0.01038478  0.01103383  0.01168287  0.01233192
+## heterogeneity 31.103459347 29.37604808 27.77329129 26.28204999 24.89120856
+##                     [,21]       [,22]       [,23]       [,24]       [,25]
+## x.axis.ticks   0.01298097  0.01363002  0.01427907  0.01492812  0.01557717
+## heterogeneity 23.59126169 22.37400359 21.23229034 20.15985545 19.15116490
+##                     [,26]       [,27]       [,28]       [,29]       [,30]
+## x.axis.ticks   0.01622621  0.01687526  0.01752431  0.01817336  0.01882241
+## heterogeneity 18.20130179 17.30587360 16.46093679 15.66293505 14.90864811
+##                     [,31]       [,32]       [,33]      [,34]       [,35]
+## x.axis.ticks   0.01947146  0.02012051  0.02076956  0.0214186  0.02206765
+## heterogeneity 14.19514925 13.51976942 12.88006706 12.2738023 11.69891506
+##                    [,36]       [,37]      [,38]      [,39]     [,40]      [,41]
+## x.axis.ticks   0.0227167  0.02336575  0.0240148 0.02466385 0.0253129 0.02596194
+## heterogeneity 11.1535058 10.63581955 10.1442311 9.67723287 9.2334240 8.81150031
+##                    [,42]      [,43]      [,44]      [,45]      [,46]      [,47]
+## x.axis.ticks  0.02661099 0.02726004 0.02790909 0.02855814 0.02920719 0.02985624
+## heterogeneity 8.41024632 8.02852717 7.66528211 7.31951840 6.99030592 6.67677223
+##                    [,48]      [,49]      [,50]      [,51]      [,52]      [,53]
+## x.axis.ticks  0.03050528 0.03115433 0.03180338 0.03245243 0.03310148 0.03375053
+## heterogeneity 6.37809825 6.09351421 5.82229608 5.56376230 5.31727077 5.08221612
+##                    [,54]      [,55]      [,56]      [,57]      [,58]      [,59]
+## x.axis.ticks  0.03439958 0.03504862 0.03569767 0.03634672 0.03699577 0.03764482
+## heterogeneity 4.85802722 4.64416492 4.44011991 4.24541078 4.05958230 3.88220371
+##                    [,60]      [,61]      [,62]      [,63]      [,64]      [,65]
+## x.axis.ticks  0.03829387 0.03894292 0.03959196 0.04024101 0.04089006 0.04153911
+## heterogeneity 3.71286724 3.55118669 3.39679611 3.24934863 3.10851530 2.97398405
+##                    [,66]      [,67]      [,68]     [,69]      [,70]     [,71]
+## x.axis.ticks  0.04218816 0.04283721 0.04348626 0.0441353 0.04478435 0.0454334
+## heterogeneity 2.84545873 2.72265818 2.60531540 2.4931767 2.38600121 2.2835597
+##                    [,72]     [,73]      [,74]     [,75]      [,76]      [,77]
+## x.axis.ticks  0.04608245 0.0467315 0.04738055 0.0480296 0.04867864 0.04932769
+## heterogeneity 2.18563431 2.0920180 2.00251357 1.9169336 1.83509958 1.75684162
+##                    [,78]      [,79]      [,80]      [,81]      [,82]      [,83]
+## x.axis.ticks  0.04997674 0.05062579 0.05127484 0.05192389 0.05257294 0.05322199
+## heterogeneity 1.68199796 1.61041453 1.54194459 1.47644832 1.41379249 1.35385013
+##                    [,84]      [,85]      [,86]      [,87]      [,88]      [,89]
+## x.axis.ticks  0.05387103 0.05452008 0.05516913 0.05581818 0.05646723 0.05711628
+## heterogeneity 1.29650018 1.24162726 1.18912133 1.13887743 1.09079547 1.04477996
+##                    [,90]      [,91]      [,92]      [,93]      [,94]      [,95]
+## x.axis.ticks  0.05776533 0.05841437 0.05906342 0.05971247 0.06036152 0.06101057
+## heterogeneity 1.00073979 0.95858802 0.91824167 0.87962155 0.84265206 0.80726103
+##                    [,96]      [,97]      [,98]      [,99]     [,100]
+## x.axis.ticks  0.06165962 0.06230867 0.06295771 0.06360676 0.06425581
+## heterogeneity 0.77337955 0.74094180 0.70988495 0.68014896 0.65167651</code></pre>
+<pre class="r"><code>pnbd.PlotDropoutRateHeterogeneity(params, lim = 0.5) ## gamma mixing distribution of Pareto dropout process</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-12-1.png" width="2400" /></p>
+<pre><code>##               [,1]         [,2]         [,3]         [,4]         [,5]
+## x.axis.ticks     0 5.050505e-03 1.010101e-02 1.515152e-02 2.020202e-02
+## heterogeneity  Inf 1.466972e-05 6.704150e-06 4.085117e-06 2.800385e-06
+##                       [,6]         [,7]         [,8]         [,9]        [,10]
+## x.axis.ticks  2.525253e-02 3.030303e-02 0.0353535354 4.040404e-02 4.545455e-02
+## heterogeneity 2.047669e-06 1.559662e-06 0.0000012219 9.772280e-07 7.939541e-07
+##                      [,11]        [,12]        [,13]        [,14]        [,15]
+## x.axis.ticks  5.050505e-02 5.555556e-02 6.060606e-02 6.565657e-02 7.070707e-02
+## heterogeneity 6.531154e-07 5.426868e-07 4.546872e-07 3.836212e-07 3.255892e-07
+##                      [,16]        [,17]        [,18]        [,19]        [,20]
+## x.axis.ticks  7.575758e-02 8.080808e-02 8.585859e-02 9.090909e-02 9.595960e-02
+## heterogeneity 2.777530e-07 2.380028e-07 2.047411e-07 1.767395e-07 1.530398e-07
+##                      [,21]        [,22]        [,23]        [,24]        [,25]
+## x.axis.ticks  1.010101e-01 1.060606e-01 1.111111e-01 1.161616e-01 1.212121e-01
+## heterogeneity 1.328863e-07 1.156759e-07 1.009233e-07 8.823447e-08 7.728707e-08
+##                      [,26]        [,27]        [,28]        [,29]        [,30]
+## x.axis.ticks  1.262626e-01 1.313131e-01 1.363636e-01 1.414141e-01 1.464646e-01
+## heterogeneity 6.781568e-08 5.960035e-08 5.245784e-08 4.623471e-08 4.080188e-08
+##                      [,31]        [,32]        [,33]        [,34]        [,35]
+## x.axis.ticks  1.515152e-01 1.565657e-01 1.616162e-01 1.666667e-01 1.717172e-01
+## heterogeneity 3.605030e-08 3.188750e-08 2.823477e-08 2.502490e-08 2.220032e-08
+##                      [,36]        [,37]        [,38]        [,39]        [,40]
+## x.axis.ticks  1.767677e-01 1.818182e-01 1.868687e-01 1.919192e-01 1.969697e-01
+## heterogeneity 1.971162e-08 1.751619e-08 1.557731e-08 1.386317e-08 1.234621e-08
+##                      [,41]        [,42]        [,43]        [,44]        [,45]
+## x.axis.ticks  2.020202e-01 2.070707e-01 2.121212e-01 2.171717e-01 2.222222e-01
+## heterogeneity 1.100247e-08 9.811118e-09 8.753970e-09 7.815161e-09 6.980808e-09
+##                      [,46]        [,47]        [,48]        [,49]        [,50]
+## x.axis.ticks  2.272727e-01 2.323232e-01 2.373737e-01 2.424242e-01 2.474747e-01
+## heterogeneity 6.238754e-09 5.578335e-09 4.990184e-09 4.466067e-09 3.998733e-09
+##                      [,51]        [,52]        [,53]        [,54]        [,55]
+## x.axis.ticks  2.525253e-01 2.575758e-01 2.626263e-01 2.676768e-01 2.727273e-01
+## heterogeneity 3.581793e-09 3.209610e-09 2.877207e-09 2.580184e-09 2.314647e-09
+##                      [,56]        [,57]        [,58]        [,59]        [,60]
+## x.axis.ticks  2.777778e-01 2.828283e-01 2.878788e-01 2.929293e-01 2.979798e-01
+## heterogeneity 2.077150e-09 1.864638e-09 1.674402e-09 1.504037e-09 1.351408e-09
+##                      [,61]        [,62]        [,63]        [,64]        [,65]
+## x.axis.ticks  3.030303e-01 3.080808e-01 3.131313e-01 3.181818e-01 3.232323e-01
+## heterogeneity 1.214617e-09 1.091975e-09 9.819806e-10 8.832956e-10 7.947283e-10
+##                      [,66]        [,67]        [,68]        [,69]        [,70]
+## x.axis.ticks  3.282828e-01 3.333333e-01 3.383838e-01 3.434343e-01 3.484848e-01
+## heterogeneity 7.152161e-10 6.438115e-10 5.796687e-10 5.220328e-10 4.702292e-10
+##                      [,71]        [,72]        [,73]        [,74]        [,75]
+## x.axis.ticks  3.535354e-01 3.585859e-01 3.636364e-01 3.686869e-01 3.737374e-01
+## heterogeneity 4.236553e-10 3.817723e-10 3.440981e-10 3.102015e-10 2.796965e-10
+##                      [,76]        [,77]        [,78]        [,79]        [,80]
+## x.axis.ticks  3.787879e-01 3.838384e-01 3.888889e-01 3.939394e-01 3.989899e-01
+## heterogeneity 2.522374e-10 2.275146e-10 2.052504e-10 1.851963e-10 1.671290e-10
+##                      [,81]        [,82]        [,83]        [,84]        [,85]
+## x.axis.ticks  4.040404e-01 4.090909e-01 4.141414e-01 4.191919e-01 4.242424e-01
+## heterogeneity 1.508485e-10 1.361751e-10 1.229479e-10 1.110219e-10 1.002674e-10
+##                      [,86]        [,87]        [,88]        [,89]        [,90]
+## x.axis.ticks  4.292929e-01 4.343434e-01 4.393939e-01 4.444444e-01 4.494949e-01
+## heterogeneity 9.056742e-11 8.181717e-11 7.392234e-11 6.679813e-11 6.036830e-11
+##                      [,91]        [,92]        [,93]        [,94]        [,95]
+## x.axis.ticks  4.545455e-01 4.595960e-01 4.646465e-01 4.696970e-01 4.747475e-01
+## heterogeneity 5.456428e-11 4.932437e-11 4.459305e-11 4.032033e-11 3.646122e-11
+##                     [,96]        [,97]        [,98]        [,99]       [,100]
+## x.axis.ticks  4.79798e-01 4.848485e-01 4.898990e-01 4.949495e-01 5.000000e-01
+## heterogeneity 3.29752e-11 2.982578e-11 2.698009e-11 2.440849e-11 2.208431e-11</code></pre>
+<p>The above plot shows the distribution of customers’ propensities to drop out. Only a few customer densities have high drop-out rates.</p>
+</div>
+<div id="beta-negative-binomial-distribution" class="section level2">
+<h2>Beta negative binomial distribution</h2>
+<p>Why <strong>Parameter beta negative binomial distribution</strong> model? Beta Geometric Negative Binomial Distribution can be used to determine the expected repeat visits for customers in order to determine a customers lifetime value. It can also be used to determine whether a customer has churned or is likely to churn soon.</p>
+<pre class="r"><code>bgnbd.PlotTransactionRateHeterogeneity(params_bgnbd) ## gamma distribution</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-13-1.png" width="2400" /></p>
+<pre><code>##               [,1]         [,2]         [,3]         [,4]         [,5]
+## x.axis.ticks     0 6.490484e-04  0.001298097  0.001947145  0.002596194
+## heterogeneity  Inf 1.115260e+02 89.206840704 76.991968879 68.551008226
+##                       [,6]        [,7]         [,8]         [,9]        [,10]
+## x.axis.ticks   0.003245242  0.00389429  0.004543339  0.005192387  0.005841435
+## heterogeneity 62.085631697 56.84007071 52.426643098 48.620175980 45.278170286
+##                      [,11]        [,12]        [,13]        [,14]        [,15]
+## x.axis.ticks   0.006490484  0.007139532  0.007788581  0.008437629  0.009086677
+## heterogeneity 42.304569515 39.631402474 37.208681540 34.998473673 32.971235280
+##                      [,16]       [,17]       [,18]       [,19]       [,20]
+## x.axis.ticks   0.009735726  0.01038477  0.01103382  0.01168287  0.01233192
+## heterogeneity 31.103447666 29.37603591 27.77327882 26.28203737 24.89119590
+##                     [,21]       [,22]       [,23]       [,24]       [,25]
+## x.axis.ticks   0.01298097  0.01363002  0.01427906  0.01492811  0.01557716
+## heterogeneity 23.59124909 22.37399113 21.23227808 20.15984343 19.15115316
+##                     [,26]       [,27]       [,28]       [,29]      [,30]
+## x.axis.ticks   0.01622621  0.01687526  0.01752431  0.01817335  0.0188224
+## heterogeneity 18.20129036 17.30586250 16.46092604 15.66292465 14.9086381
+##                     [,31]      [,32]       [,33]      [,34]       [,35]
+## x.axis.ticks   0.01947145  0.0201205  0.02076955  0.0214186  0.02206765
+## heterogeneity 14.19513958 13.5197601 12.88005812 12.2737937 11.69890684
+##                     [,36]       [,37]       [,38]      [,39]      [,40]
+## x.axis.ticks   0.02271669  0.02336574  0.02401479 0.02466384 0.02531289
+## heterogeneity 11.15349797 10.63581202 10.14422388 9.67722599 9.23341740
+##                    [,41]      [,42]      [,43]      [,44]      [,45]      [,46]
+## x.axis.ticks  0.02596194 0.02661098 0.02726003 0.02790908 0.02855813 0.02920718
+## heterogeneity 8.81149406 8.41024036 8.02852149 7.66527670 7.31951326 6.99030103
+##                    [,47]      [,48]      [,49]      [,50]      [,51]      [,52]
+## x.axis.ticks  0.02985623 0.03050527 0.03115432 0.03180337 0.03245242 0.03310147
+## heterogeneity 6.67676760 6.37809385 6.09351003 5.82229212 5.56375855 5.31726722
+##                    [,53]      [,54]      [,55]      [,56]      [,57]      [,58]
+## x.axis.ticks  0.03375052 0.03439956 0.03504861 0.03569766 0.03634671 0.03699576
+## heterogeneity 5.08221275 4.85802404 4.64416191 4.44011706 4.24540809 4.05957976
+##                    [,59]      [,60]     [,61]      [,62]    [,63]      [,64]
+## x.axis.ticks  0.03764481 0.03829385 0.0389429 0.03959195 0.040241 0.04089005
+## heterogeneity 3.88220132 3.71286499 3.5511846 3.39679411 3.249347 3.10851353
+##                   [,65]      [,66]      [,67]      [,68]      [,69]      [,70]
+## x.axis.ticks  0.0415391 0.04218815 0.04283719 0.04348624 0.04413529 0.04478434
+## heterogeneity 2.9739824 2.84545716 2.72265671 2.60531402 2.49317546 2.38600000
+##                    [,71]      [,72]      [,73]      [,74]      [,75]      [,76]
+## x.axis.ticks  0.04543339 0.04608244 0.04673148 0.04738053 0.04802958 0.04867863
+## heterogeneity 2.28355854 2.18563326 2.09201698 2.00251265 1.91693274 1.83509878
+##                    [,77]      [,78]      [,79]      [,80]      [,81]      [,82]
+## x.axis.ticks  0.04932768 0.04997673 0.05062577 0.05127482 0.05192387 0.05257292
+## heterogeneity 1.75684088 1.68199727 1.61041390 1.54194400 1.47644778 1.41379199
+##                    [,83]      [,84]      [,85]      [,86]      [,87]      [,88]
+## x.axis.ticks  0.05322197 0.05387102 0.05452006 0.05516911 0.05581816 0.05646721
+## heterogeneity 1.35384966 1.29649976 1.24162687 1.18912097 1.13887710 1.09079518
+##                    [,89]      [,90]      [,91]     [,92]      [,93]     [,94]
+## x.axis.ticks  0.05711626 0.05776531 0.05841435 0.0590634 0.05971245 0.0603615
+## heterogeneity 1.04477970 1.00073955 0.95858780 0.9182415 0.87962137 0.8426519
+##                    [,95]     [,96]      [,97]      [,98]      [,99]     [,100]
+## x.axis.ticks  0.06101055 0.0616596 0.06230865 0.06295769 0.06360674 0.06425579
+## heterogeneity 0.80726089 0.7733794 0.74094170 0.70988486 0.68014889 0.65167645</code></pre>
+<p>The plot above shows that customers are more likely to have low values of individual poisson transaction process parameters. It shows that only a few customers have high transaction rate. This basically shows the heteroginity across customer transactions. It validates the fact that repeat customer buys around their own mean of purchasing time. The timegap between purchases would be different for different customers. No customer would buy forever. The time for dropout for different customers varies.</p>
+</div>
+<div id="individual-level-estimates" class="section level2">
+<h2>Individual level estimates</h2>
+<p>Number of repeat transactions a new customer would make in given time period: t</p>
+<pre class="r"><code>for (t in seq(40, 100, by = 10)) {
+  print(paste(&quot;Expected number of repeat transaction by a new customer in&quot;, t, &quot;days =&quot;, pnbd.Expectation(params, t = t)))
+}</code></pre>
+<pre><code>## [1] &quot;Expected number of repeat transaction by a new customer in 40 days = 0.476533249803466&quot;
+## [1] &quot;Expected number of repeat transaction by a new customer in 50 days = 0.595666556868117&quot;
+## [1] &quot;Expected number of repeat transaction by a new customer in 60 days = 0.714799862503289&quot;
+## [1] &quot;Expected number of repeat transaction by a new customer in 70 days = 0.833933166893812&quot;
+## [1] &quot;Expected number of repeat transaction by a new customer in 80 days = 0.953066470182101&quot;
+## [1] &quot;Expected number of repeat transaction by a new customer in 90 days = 1.07219977248127&quot;
+## [1] &quot;Expected number of repeat transaction by a new customer in 100 days = 1.19133307388336&quot;</code></pre>
+<p>This shows that a new customer is most likely to transact again after 3 months</p>
+<div id="for-a-specific-customer17850" class="section level3">
+<h3>For a specific customer::17850</h3>
+<pre class="r"><code>cust.17850 &lt;- cal.cbs[&quot;17850&quot;, ]
+x &lt;- cust.17850[&quot;x&quot;]
+t.x &lt;- cust.17850[&quot;t.x&quot;]
+T.cal &lt;- cust.17850[&quot;T.cal&quot;]
+
+for (t in seq(40, 100, by = 10)) {
+  print(paste(&quot;Expected number of repeat transaction by customer 17850 in&quot;, t, &quot;days =&quot;, pnbd.ConditionalExpectedTransactions(params, T.star = t, x, t.x, T.cal)))
+}</code></pre>
+<pre><code>## [1] &quot;Expected number of repeat transaction by customer 17850 in 40 days = 0.271461381329351&quot;
+## [1] &quot;Expected number of repeat transaction by customer 17850 in 50 days = 0.339326726091761&quot;
+## [1] &quot;Expected number of repeat transaction by customer 17850 in 60 days = 0.407192070643993&quot;
+## [1] &quot;Expected number of repeat transaction by customer 17850 in 70 days = 0.475057414993785&quot;
+## [1] &quot;Expected number of repeat transaction by customer 17850 in 80 days = 0.542922759148323&quot;
+## [1] &quot;Expected number of repeat transaction by customer 17850 in 90 days = 0.610788103114302&quot;
+## [1] &quot;Expected number of repeat transaction by customer 17850 in 100 days = 0.678653446897971&quot;</code></pre>
+<p>Customer 17850 will most likely transact again atleast once within 2 months</p>
+</div>
+</div>
+</div>
+<div id="model-performance" class="section level1">
+<h1>Model Performance</h1>
+<div id="model-vs-actual-traning-period" class="section level2">
+<h2>model vs actual: traning period</h2>
+<div id="paretonegative-binomial-distribution" class="section level3">
+<h3>Pareto/negative binomial distribution</h3>
+<pre class="r"><code>pnbd.PlotFrequencyInCalibration(params, cal.cbs, 3)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-16-1.png" width="2400" /></p>
+<pre><code>##                freq.0   freq.1   freq.2  freq.3+
+## n.x.actual   1273.000 542.0000 280.0000 473.0000
+## n.x.expected 1257.398 516.9526 281.4184 512.2307</code></pre>
+<p>This plot shows the actual and expected number of customers who made repeat transactions in the caliberation period binned as per frequencies</p>
+</div>
+<div id="beta-negative-binomial-distribution-1" class="section level3">
+<h3>Beta negative binomial distribution</h3>
+<pre class="r"><code>bgnbd.PlotFrequencyInCalibration(params_bgnbd, cal.cbs, 3)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-17-1.png" width="2400" /></p>
+<pre><code>##                freq.0   freq.1   freq.2  freq.3+
+## n.x.actual   1273.000 542.0000 280.0000 473.0000
+## n.x.expected 1257.399 516.9525 281.4182 499.2298</code></pre>
+<p>This plot shows the actual and expected number of customers who made repeat transactions in the caliberation period binned as per frequencies The difference between PNBD and BGNBD models is not much in this case</p>
+</div>
+</div>
+<div id="model-vs-actual-test-holdout-test-period" class="section level2">
+<h2>model vs actual: test (holdout) test period</h2>
+<p>The frequency plot above shows that the models perform alright in the caliberation period. But that does not mean that the models are good. To test the performance of the model, it is important to see how they perform in the holdout/test period.</p>
+<div id="function" class="section level3">
+<h3>Function</h3>
+<pre class="r"><code>## Data prep for data including holdout data
+ucllog &lt;- dc.SplitUpElogForRepeatTrans(ucl_log_sum)$repeat.trans.elog
+x.star &lt;- rep(0, nrow(cal.cbs))
+cal.cbs2 &lt;- cbind(cal.cbs, x.star)
+ucllog.cust &lt;- ucllog$cust
+for (i in 1:nrow(cal.cbs2)) {
+  current.cust &lt;- rownames(cal.cbs2)[i]
+  tot.cust.trans &lt;- length(which(ucllog.cust == current.cust))
+  cal.trans &lt;- cal.cbs2[i, &quot;x&quot;]
+  cal.cbs2[i, &quot;x.star&quot;] &lt;- tot.cust.trans - cal.trans
+}
+
+cal.cbs2[1:3, ]</code></pre>
+<pre><code>##       x t.x T.cal x.star
+## 17850 1   1   194      0
+## 13047 3 154   194      4
+## 13748 2 141   194      1</code></pre>
+<pre class="r"><code>tot.cbt &lt;- dc.CreateFreqCBT(ucllog)
+period &lt;- range(data$InvoiceDate)[2] - threshold_date + 1
+
+fun_zero &lt;- function(vector_with_nas) {
+  vector_with_nas[is.na(vector_with_nas)] &lt;- 0
+  return(vector_with_nas)
+}</code></pre>
+</div>
+<div id="paretonegative-binomial-distribution-1" class="section level3">
+<h3>Pareto/negative binomial distribution</h3>
+<pre class="r"><code>T.star &lt;- as.numeric(max(ucl_log_sum$date) - threshold_date + 1)
+censor &lt;- 11
+x.star &lt;- cal.cbs2[, &quot;x.star&quot;]
+comp &lt;- pnbd.PlotFreqVsConditionalExpectedFrequency(params,
+  T.star = T.star,
+  cal.cbs = cal.cbs2,
+  x.star,
+  censor
+)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-19-1.png" width="2400" /></p>
+<p>The PnBD model does well in the holdout period, however we do see deviations becoming larger towards the end.</p>
+</div>
+<div id="beta-negative-binomial-distribution-2" class="section level3">
+<h3>Beta negative binomial distribution</h3>
+<pre class="r"><code>T.star &lt;- as.numeric(max(ucl_log_sum$date) - threshold_date + 1)
+censor &lt;- 11
+x.star &lt;- cal.cbs2[, &quot;x.star&quot;]
+comp &lt;- bgnbd.PlotFreqVsConditionalExpectedFrequency(params_bgnbd,
+  T.star = T.star,
+  cal.cbs = cal.cbs2,
+  x.star,
+  censor
+)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-20-1.png" width="2400" /></p>
+<p>The Beta negative binomial distribution model also esitmates well.</p>
+</div>
+</div>
+</div>
+<div id="comparing-cummulative-actual-sales-with-predicted-transactions" class="section level1">
+<h1>Comparing cummulative actual sales with predicted transactions</h1>
+<p>Next, to check if the models capture the trend of transactions, we test how the model performs against cummulative sales in the holdout period. This in itself gives an idea as to predict customer behavior in the future.</p>
+<p>For our models they overshoot a little. So there is a need to look at the data
+and duning the parameter so it match better our hold out period.</p>
+<pre class="r"><code># Get total daily sales
+d.track &lt;- rep(0, period)
+
+origin &lt;- min(data$InvoiceDate)
+for (i in colnames(tot.cbt)) {
+  date.index &lt;- (as.numeric(difftime(
+    as.Date(i),
+    origin
+  )) + 1)
+  d.track[date.index] &lt;- sum(tot.cbt[, i])
+}
+
+# Get mean weekly actual sales
+w.track &lt;- rep(0, round(period / 7))
+for (j in 1:length(w.track)) {
+  w.track[j] &lt;- mean(d.track[(j * 7 - 6):(j * 7)])
+}
+
+T.cal &lt;- (cal.cbs2[, &quot;T.cal&quot;])
+T.tot &lt;- as.numeric(round((range(data$InvoiceDate)[2] - range(data$InvoiceDate)[1])))</code></pre>
+<div id="paretonegative-binomial-distribution-2" class="section level3">
+<h3>Pareto/negative binomial distribution</h3>
+<pre class="r"><code>## Cummalative daily tracking
+cum.track &lt;- cumsum(d.track)
+cum.tracking &lt;- pnbd.PlotTrackingCum(params, T.cal, T.tot, na.omit(cum.track),
+  title = &quot;Tracking daily cumulative transactions&quot;,
+  xlab = &quot;Days&quot;
+)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-22-1.png" width="2400" /></p>
+<pre class="r"><code>## Cummalative weekly tracking
+cum.track.week &lt;- cumsum(w.track)
+cum.tracking.week &lt;- pnbd.PlotTrackingCum(params, T.cal, T.tot / 7, na.omit(cum.track.week))</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-23-1.png" width="2400" /></p>
+<p>Pareto/Negative Binomial Distribution captures the trend in cummualtive sales reasonably well.</p>
+</div>
+<div id="beta-negative-binomial-distribution-3" class="section level3">
+<h3>Beta negative binomial distribution</h3>
+<pre class="r"><code>## Cummalative daily tracking
+cum.track &lt;- cumsum(d.track)
+cum.tracking &lt;- bgnbd.PlotTrackingCum(params_bgnbd, T.cal, T.tot, na.omit(cum.track), title = &quot;Tracking daily cumulative transactions&quot;, xlab = &quot;Days&quot;)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-24-1.png" width="2400" /></p>
+<pre class="r"><code>## Cummalative weekly tracking
+cum.track.week &lt;- cumsum(w.track)
+cum.tracking.week &lt;- bgnbd.PlotTrackingCum(params_bgnbd, T.cal, T.tot / 7, na.omit(cum.track.week))</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-25-1.png" width="2400" /></p>
+<p>Again the difference in the 2 models for this dataset is insignificant.</p>
+</div>
+</div>
+<div id="weekly-and-daily-transactional-forecasts" class="section level1">
+<h1>Weekly and Daily transactional forecasts</h1>
+<p>While it was useful to check the models against cummulative sales, we could also test the models performance against daily and weekly transactions. To test the models, we first extract the actual daily and weekly values in the holdout period and then compare with the expected values</p>
+<div id="daily-forecast" class="section level2">
+<h2>Daily forecast</h2>
+<p>Both the models capture the trend in daily sales.</p>
+<div id="paretonegative-binomial-distribution-3" class="section level3">
+<h3>Pareto/negative binomial distribution</h3>
+<pre class="r"><code>inc.tracking.daily &lt;- pnbd.PlotTrackingInc(params,
+  T.cal = T.cal,
+  T.tot,
+  actual.inc.tracking.data = na.omit(d.track),
+  title = &quot;Tracking daily transactions&quot;, xlab = &quot;Days&quot;
+)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-26-1.png" width="2400" /></p>
+<pre class="r"><code>inc.tracking.daily[, 20:30]</code></pre>
+<pre><code>##              [,1]     [,2]     [,3]     [,4]     [,5]     [,6]     [,7]
+## actual   23.00000  9.00000  7.00000  7.00000  0.00000  0.00000  0.00000
+## expected 10.39827 10.46205 10.48449 10.48449 10.48449 10.48449 10.48449
+##              [,8]     [,9]    [,10]    [,11]
+## actual    0.00000  0.00000  0.00000  0.00000
+## expected 10.48449 10.48449 10.48449 10.48449</code></pre>
+</div>
+<div id="beta-negative-binomial-distribution-4" class="section level3">
+<h3>Beta negative binomial distribution</h3>
+<pre class="r"><code>inc.tracking.daily &lt;- bgnbd.PlotTrackingInc(params_bgnbd,
+  T.cal = T.cal,
+  T.tot,
+  actual.inc.tracking.data = na.omit(d.track),
+  title = &quot;Tracking daily transactions&quot;, xlab = &quot;Days&quot;
+)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-28-1.png" width="2400" /></p>
+<pre class="r"><code>inc.tracking.daily[, 20:30]</code></pre>
+<pre><code>##              [,1]     [,2]     [,3]     [,4]     [,5]     [,6]     [,7]
+## actual   23.00000  9.00000  7.00000  7.00000  0.00000  0.00000  0.00000
+## expected 10.39826 10.46204 10.48448 10.48448 10.48448 10.48448 10.48448
+##              [,8]     [,9]    [,10]    [,11]
+## actual    0.00000  0.00000  0.00000  0.00000
+## expected 10.48448 10.48448 10.48448 10.48448</code></pre>
+</div>
+</div>
+<div id="weekly-forecast" class="section level2">
+<h2>Weekly forecast</h2>
+<p>Both PnBD and BGnBD models capture the trend of weekly transactons well. The difference between the 2 models is not that significant as more than 60% of the customers are repeat customers, which is really high. While both the models capture the trend and average value of customers well, it does not capture effects of seasonality and marketing campaigns well.</p>
+<div id="paretonegative-binomial-distribution-4" class="section level3">
+<h3>Pareto/negative binomial distribution</h3>
+<pre class="r"><code>inc.tracking.weekly &lt;- pnbd.PlotTrackingInc(params,
+  T.cal = T.cal,
+  T.tot / 7,
+  actual.inc.tracking.data = na.omit(w.track)
+)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-30-1.png" width="2400" /></p>
+<pre class="r"><code>inc.tracking.weekly[, 1:10]</code></pre>
+<pre><code>##              [,1]      [,2]      [,3]    [,4]      [,5]     [,6]     [,7]
+## actual   5.428571 17.000000 17.285714  2.0000  2.857143 18.42857 16.42857
+## expected 3.539757  5.631262  8.388687 11.7784 14.188438 15.34675 17.20142
+##              [,8]     [,9]    [,10]
+## actual   15.14286 18.00000 16.85714
+## expected 19.46972 19.84278 20.36826</code></pre>
+</div>
+<div id="beta-negative-binomial-distribution-5" class="section level3">
+<h3>Beta negative binomial distribution</h3>
+<pre class="r"><code>inc.tracking.weekly &lt;- bgnbd.PlotTrackingInc(params_bgnbd,
+  T.cal = T.cal,
+  T.tot / 7,
+  actual.inc.tracking.data = na.omit(w.track)
+)</code></pre>
+<p><img src="/post/2020-05-10-predictive-sales_files/figure-html/unnamed-chunk-32-1.png" width="2400" /></p>
+<pre class="r"><code>inc.tracking.weekly[, 1:10]</code></pre>
+<pre><code>##              [,1]      [,2]      [,3]     [,4]      [,5]     [,6]     [,7]
+## actual   5.428571 17.000000 17.285714  2.00000  2.857143 18.42857 16.42857
+## expected 3.539754  5.631256  8.388679 11.77839 14.188423 15.34674 17.20140
+##              [,8]     [,9]    [,10]
+## actual   15.14286 18.00000 16.85714
+## expected 19.46970 19.84276 20.36824</code></pre>
+</div>
+</div>
+</div>
+<div id="next-steps" class="section level1">
+<h1>Next Steps:</h1>
+<p>The analysis should be taking futhere and include more models. Specially an
+inlcusion of deep neural network should be included for the used models.
+It is for work and objects longere the road.</p>
+</div>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
+<p>The analysis is know don and we have introduced two models to capture when
+the consumer would make the next purchase and how CLV would change in the
+future. We can see that approximately the next purchase would be in the next
+three months and the CLV will increase.</p>
+<p>There is much more work to be don with the data. Here we could make deep learning
+to add season and trend.</p>
+<p>We could also include other models to test the functionality and see if we have
+others there can be better to predict sales.</p>
+</div>

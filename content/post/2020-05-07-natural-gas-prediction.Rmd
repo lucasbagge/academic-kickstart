@@ -263,4 +263,94 @@ ptibble %>%
 ```
 From our stationary test the conclusion is that the time serie is not statinory.
 
+It is important to normalize each trend in the data;
+
+```{r}
+ng_sta <- rnorm(length(ng_close_month_ts),
+                mean = 1,
+                sd = 1)
+ng_trend <-  cumsum(rnorm(length(ng_close_month_ts),
+                          mean = 1,
+                          sd = 4)) +
+  ng_close_month_ts / 100
+
+#normlization
+
+ng_sta <- ng_sta / max(ng_sta)
+ng_trend <- ng_trend / max(ng_trend)
+```
+
+```{r}
+ng_sta_tidy <- tidy(ng_sta)
+
+ng_test = ts(ng_sta,
+                       start = c(2007, 1),
+                       end = c(2020, 5),
+                       frequency = 12)
+ng_test_tidyr <- tidy(ng_test)
+
+plot(ng_sta, type = "l")
+ng_test_tidyr %>% 
+  ggplot(
+    aes(x = index,
+        y = value
+    )) +
+  geom_line(
+    color = "indianred3", 
+    size = 1) +
+  labs(title = "Natural Gas stationary",
+       subtitle = "2000 to 2020",
+       x = "",
+       y = "Close price") +
+  theme_minimal()
+```
+
+
+```{r}
+ng_trend_tidy <- tidy(ng_trend)
+
+ng_trend_tidy %>% 
+  ggplot(
+    aes(x = index,
+        y = value
+    )) +
+  geom_line(
+    color = "indianred3", 
+    size = 1) +
+  labs(title = "Natural Gas stationary",
+       subtitle = "2000 to 2020",
+       x = "",
+       y = "Close price") +
+  theme_minimal()
+```
+
+Missing a good acf 
+
+From the acf it can be concluded that the trend is not stationar.
+
+# Decomposing
+
+A time series often have the following component; trend, random and seasonal component.
+What decomposing is about is to seperate the diffferent part and look at them 
+apart.
+
+```{r}
+ng_close_month_ts %>% 
+  decompose() %>% 
+  autoplot() +
+  theme_minimal()
+```
+
+We can see there is a sesonal component mostly in the winter period where people need
+to buy more gas for heat. Overall the price is very volatile and have random
+walk movement. 
+
+# Modelling
+
+State models are based on the idea that we have an unobserved process we would
+like to say something about. There a different types and furthere complicated state
+space models. For the more simply model there is **local level**, which involve two equations
+one explaning the observded path and the other the unobserved path. It is woth mentioning
+that because we assume it is a random walk so the series is non stationary. 
+
 

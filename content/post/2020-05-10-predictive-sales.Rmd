@@ -1,0 +1,615 @@
+---
+title: Predictive sales
+author: Lucas Bagge
+date: '2020-05-10'
+slug: predictive-sales
+categories:
+  - Machine learning
+  - Sales
+  - Online
+tags:
+  - ML
+  - PnBD 
+  - BGnBD 
+  - CLV
+subtitle: 'A introduction to the new digital team'
+summary: 'For this post we are gonna try using a online data to predict
+consumers behavior based on the models "Pareto Negative Binomial Distribution" 
+and "Beta Geometric Negative Binomial Distribution"'
+authors: []
+lastmod: '2020-05-10T06:52:36+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, 
+                      echo = TRUE, dpi = 300, cache.lazy = FALSE,
+                      tidy = "styler", fig.width = 8, fig.height = 5)
+library(scales)
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(stringr)
+library(lubridate)
+library(pastecs)
+```
+
+# Abstract 
+
+For this analysis we are using a online shop data set to make a model to predict
+the next purchase per consumer and estimate value per consumer over the next
+period. To look at this we use a **Parameter pareto/Negative Binomial Distribution**
+and a **Parameter beta negative binomial distribution** model. From the result we
+can see that for most of the consumer the next purchase would be in the next
+three month and we can expect the CLV will be growing over time.
+
+# Introduction
+
+There is often a problem in a B2C setting to capture the pattern of the
+customer. Here the business can neglect the customer because they dont understand
+the actual value. 
+
+Here there is the need to figure out the spend level for acquring a new customers. 
+And how to different segemnt interact with the product. There is also the question of how 
+well does one product do in the market where the face a hard competition. 
+Is there a way to increase the demand and make the most out of each customer?
+
+Understanding a customer is the most essentiel for every business but it is a hard
+task and there is need for a lot of data analysis to help.
+
+A popular method is **Estimating lifetime value**. It is also called CLV and it is the
+present value of future cash flows added to the customer during a period. For this
+method the business get an idea of the revenue from each customer in a given time frame.
+The best way of using CLV is to use data and models. Here we want to fit probalistic models
+to a historical data set.
+
+By using CLV we get a understanding of how much we should spend on acquring customer.
+The method also allows us to predict demand for different product and customer segment.
+
+# CLV Analysis
+
+The data is from a online shop and contaions transaction occuring from 01/12/2010 and 09/12/2011.
+For this analysis the team want to se the lifetime value of each customer and predict when
+and how much a customer buy next.
+
+## Attribute information
+
+The hole data includes 351031 observations and 13 variables.
+
+```{r}
+#Read the data 
+data = read.csv("data_sales.csv",
+                stringsAsFactors = F)
+#Fix the date 
+data = data %>% 
+  mutate(InvoiceDate = as.Date(as.POSIXct(InvoiceDate,format = "%m/%d/%Y %H:%M"))) %>% 
+  drop_na()
+str(data)
+```
+
+- `InvoiceNo` Invoice number. Nominal, a 6-digit integral number uniquely assigned to each transaction.
+- `StockCode` Product (item) code. Nominal, a 5-digit integral number uniquely assigned to each distinct product.
+- `Description` Product (item) name. Nominal.
+- `Quantity` The quantities of each product (item) per transaction. Numeric.
+- `InvoiceDate` Invoice Date and time. Numeric, the day and time when each transaction was generated.
+- `UnitPrice` Unit price. Numeric, Product price per unit in sterling.
+- `CustomerID` Customer number. Nominal, a 5-digit integral number uniquely assigned to each customer.
+- `Country` Country name. Nominal, the name of the country where each customer resides.
+
+## Data cleaning
+
+For a couple of the product there is assiocates a negative quantity and we have choosen
+to exlude them. 
+
+For making our model and analysis we need to use the famouse **RFM** marketing
+technique, which is used to determine quantitatively which customers are the best ones by examining how recently a customer has purchased (recency), how often they purchase (frequency), and how much the customer spends (monetary).
+
+We also want to Feature engineering reaping customer.
+
+```{r}
+#1. Get Recency, First purchase and last purchase made by customers and the total value of each transaction (QTY*PRICE)
+max_InvoiceDate = max(data$InvoiceDate)
+# today = max_InvoiceDate+2
+data = data %>% 
+  group_by(CustomerID) %>%
+  mutate(Recency = max_InvoiceDate - max(InvoiceDate),
+         First_purchase = max_InvoiceDate - min(InvoiceDate) ,
+         Value = Quantity*UnitPrice, 
+         Frequency = n_distinct(InvoiceNo)) %>%
+  arrange(InvoiceDate) %>% 
+  ungroup()
+
+# 2. Filter out Qty < 0 
+neg = data %>% 
+  filter(Quantity < 0)
+data = data %>%
+  filter(Quantity >= 0)
+
+# 3. Get customers with repeat transactions
+data = data %>%
+  group_by(CustomerID) %>%
+  mutate(repeat_customers = ifelse(n_distinct(InvoiceNo) > 1,n_distinct(InvoiceNo),0)) %>% 
+  ungroup()
+
+# 4. Get the country with the most customer.
+data = data %>%
+  filter(Country == "United Kingdom")
+
+
+```
+
+
+# Explanatory data
+
+When of the central aspect of Data Scientist is to investigate your data. This 
+path will contributed to understand how our data looks like.  
+
+## Summary
+
+```{r}
+ucl_summary = data %>% 
+  group_by(CustomerID) %>%
+  summarize(Last_purchase = max(InvoiceDate),
+            First_purchase = min(InvoiceDate),
+            Frequency = n_distinct(InvoiceNo), 
+            Sales = mean(Value),
+            repeat_customers = ifelse(mean(repeat_customers) > 0,
+                                      1,
+                                      0))
+
+ucl_summary = ucl_summary %>% 
+  mutate(time_between = Last_purchase - First_purchase, 
+         recency = abs(max_InvoiceDate - Last_purchase))
+head(ucl_summary) %>% 
+  kable()
+```
+
+```{r}
+print(paste("Total number of customers transacted in the given period = ", nrow(ucl_summary)))
+```
+
+## Proportion of repeat
+
+```{r}
+recency_prop = 100 * table(as.factor(ucl_summary$repeat_customers)) / sum(table(as.factor(ucl_summary$repeat_customers)))
+print(recency_prop)
+```
+
+There is a big portion of the customer that make more transaction for being more 
+precise there is 66% that make more transaction. 
+
+## Days between
+
+```{r}
+library(plyr)
+purchaseFreq <- ddply(data %>% 
+                        filter(Frequency > 1),
+                      .(CustomerID),
+                      summarize, 
+                      daysBetween = as.numeric(diff(InvoiceDate)))
+detach(package:plyr)
+
+library(grDevices)
+library(dplyr)
+ggplot(purchaseFreq %>%
+         filter( daysBetween > 0),
+       aes(x = daysBetween)) +
+    geom_histogram(fill = "orange") +
+    xlab("Time between purchases (days)") +
+    theme_minimal()
+```
+
+This plot shows that with time, the number of repeat transactions reduces.
+
+## time gap and frequency 
+
+```{r}
+ggplot(ucl_summary %>% 
+         filter(Frequency > 1),
+       aes( 
+         x = time_between, 
+         y = Frequency, 
+         color = as.factor(repeat_customers))) +
+  geom_point() + 
+  ylim(0,50) +
+  theme_minimal()
+```
+
+If the time-gap between first and last transaction is large, the mean frequency of purchase is also high.
+
+# PnBD and BGnBD Models
+
+The **Pareto Negative Binomial Distribution model** draws inferences about a customer’s state based on their transaction frequency and the observed elapsed time since a customer’s last activity. The model assumes a customer’s lifetime τ to be exponentially distributed with parameter µ, where µ is Gamma(s, β)-distributed across customers.
+
+The basic Pareto/NBD model simulates two events. It uses a “coin” to determine whether a customer churns and then it uses “dice” to determine how many items a customer will order. The coin is modeled using a Pareto distribution and the dice are modeled using a negative binomial distribution. The more information you have on a customer, the better the models can fit them to a specific distribution and the more accurate the predictions end up being.
+
+In probability theory, a **beta negative binomial distribution** is the probability distribution of a discrete random variable X equal to the number of failures needed to get r successes in a sequence of independent Bernoulli trials where the probability p of success on each trial is constant within any given experiment but is itself a random variable following a beta distribution, varying between different experiments. Thus the distribution is a compound probability distribution.
+
+## Function to be used
+
+For using the two mentions models I needed to make some furthere prepation of the data:
+```{r}
+library(BTYD)
+#Data prep for btyd:: 
+
+#1) Select only required columns for btyd:: cust, date and sales 
+ucl_log = data %>% 
+  ungroup() %>%
+  select(cust = CustomerID,
+         date = InvoiceDate,
+         sales = Value)
+
+#Merge all transactions happening on the same day for each customer 
+ucl_log_sum =  dc.MergeTransactionsOnSameDate(ucl_log)
+
+#Seperate training period and holdout period 
+#Split dataset (50-50)  
+threshold_date = unique(data$InvoiceDate)[round(length(unique(data$InvoiceDate)) * 0.5)]
+ucl.cal = ucl_log_sum %>%
+  filter(date <= threshold_date)
+
+#Seperate repeat customers 
+split.repeat = dc.SplitUpElogForRepeatTrans(ucl.cal)
+clean.repeat = split.repeat$repeat.trans.elog
+
+### Analysis for repeat customers on a day-day basis################ 
+#See number of transactions made by a customer on each day
+freq.cbt = dc.CreateFreqCBT(clean.repeat)
+
+#See if a customer made any transaction on that day
+reach.cbt = dc.CreateReachCBT(clean.repeat)
+
+#See total money spent by customer on each day
+spend.cbt = dc.CreateSpendCBT(clean.repeat)
+##################################################
+
+#Bring back customers who made no transactions in the given period 
+tot.cbt.freq = dc.CreateFreqCBT(ucl.cal)
+tot.cbt.reach = dc.CreateReachCBT(ucl.cal)
+tot.cbt.sales = dc.CreateSpendCBT(ucl.cal)
+
+ucl.cbt.freq = dc.MergeCustomers(tot.cbt.freq,freq.cbt)
+ucl.cbt.reach = dc.MergeCustomers(tot.cbt.reach,reach.cbt)
+ucl.cbt.spend = dc.MergeCustomers(tot.cbt.sales,spend.cbt)
+
+## Building rf table 
+birth.periods = split.repeat$cust.data$birth.per
+last.dates = split.repeat$cust.data$last.date
+cal.cbs.dates = data.frame(birth.periods,last.dates,threshold_date)
+cal.cbs = dc.BuildCBSFromCBTAndDates(ucl.cbt.freq,cal.cbs.dates,per = "day")
+```
+
+## Parameter pareto/negative binomial distribution
+
+```{r}
+## Parameter Estimates: Pareto/Negative Binomial Distribution model: 
+params = pnbd.EstimateParameters(cal.cbs)
+LL = pnbd.cbs.LL(params,cal.cbs)
+#Run multiple iterations to get optimal parameters 
+p.matrix = c(params, LL)
+for (i in 1:10) {
+  params = pnbd.EstimateParameters(cal.cbs,params)
+  LL = pnbd.cbs.LL(params,cal.cbs)
+  p.matrix.row = c(params,LL)
+  p.matrix = rbind(p.matrix,p.matrix.row)
+}
+colnames(p.matrix) <- c("r","alpha","s","beta","LL")
+rownames(p.matrix) <- 1:nrow(p.matrix)
+p.matrix %>% 
+  kable()
+```
+
+## Parameter beta negative binomial distribution
+```{r}
+## Estimating model parameters beta negative binomial distribution
+# Parameters are estimated by maximising log-likelihood
+#start params = (1,1,1,1)
+params_bgnbd = bgnbd.EstimateParameters(cal.cbs,par.start = c(1,1,1,2))
+
+LL = bgnbd.cbs.LL(params_bgnbd,cal.cbs)
+#Run multiple iterations to get optimal parameters 
+p.matrix_bgnd = c(params_bgnbd,LL)
+
+for (i in 1:10) {
+  params_bgnbd = bgnbd.EstimateParameters(cal.cbs,params_bgnbd)
+  LL = bgnbd.cbs.LL(params_bgnbd,cal.cbs)
+  p.matrix_bgnd.row = c(params_bgnbd,LL)
+  p.matrix_bgnd = rbind(p.matrix_bgnd,p.matrix_bgnd.row)
+}
+colnames(p.matrix_bgnd) <- c("r","alpha","a","beta","LL")
+rownames(p.matrix_bgnd) <- 1:nrow(p.matrix_bgnd)
+p.matrix_bgnd %>% 
+  kable()
+```
+
+The heterogeneity plot is a distribution of each customer’s exponential parameter that determines their lifetime. The mean dropout rate calculated at 12%. This is approximately the mean of the Survival Probability distribution, which agrees with the Pareto/NBD assumption that a customer’s lifetime can be modeled with an exponential distribution.
+
+The plot above shows that customers are more likely to have low values of individual poisson transaction process parameters. It shows that only a few customers have high transaction rate. This validates the heteroginity across customer transactions. Repeat customer buy around their own mean of purchasing time. The timegap between purchases would be different for different customers.
+
+```{r}
+pnbd.PlotTransactionRateHeterogeneity(params) ## gamma distribution
+```
+
+```{r}
+pnbd.PlotDropoutRateHeterogeneity(params,lim = 0.5) ## gamma mixing distribution of Pareto dropout process
+
+```
+
+The above plot shows the distribution of customers’ propensities to drop out. Only a few customer densities have high drop-out rates.
+
+## Beta negative binomial distribution
+
+Why **Parameter beta negative binomial distribution** model? Beta Geometric Negative Binomial Distribution can be used to determine the expected repeat visits for customers in order to determine a customers lifetime value. It can also be used to determine whether a customer has churned or is likely to churn soon.
+```{r}
+bgnbd.PlotTransactionRateHeterogeneity(params_bgnbd) ## gamma distribution
+```
+
+
+The plot above shows that customers are more likely to have low values of individual poisson transaction process parameters. It shows that only a few customers have high transaction rate. This basically shows the heteroginity across customer transactions. It validates the fact that repeat customer buys around their own mean of purchasing time. The timegap between purchases would be different for different customers. No customer would buy forever. The time for dropout for different customers varies.
+
+## Individual level estimates
+
+Number of repeat transactions a new customer would make in given time period: t
+
+```{r}
+for (t in seq(40,100,by = 10)) {
+print(paste("Expected number of repeat transaction by a new customer in",t,"days =" ,pnbd.Expectation(params,t = t)))
+}
+```
+
+This shows that a new customer is most likely to transact again after 3 months
+
+### For a specific customer::17850
+
+```{r}
+cust.17850 <- cal.cbs["17850",]
+x = cust.17850["x"]
+t.x = cust.17850["t.x"]
+T.cal = cust.17850["T.cal"]
+
+for (t in seq(40,100, by = 10)) {
+  print(paste("Expected number of repeat transaction by customer 17850 in",t,"days =" ,pnbd.ConditionalExpectedTransactions(params,T.star = t,x,t.x,T.cal)))
+}
+```
+
+Customer 17850 will most likely transact again atleast once within 2 months
+
+# Model Performance
+
+## model vs actual: traning period
+
+### Pareto/negative binomial distribution
+
+```{r}
+pnbd.PlotFrequencyInCalibration(params,cal.cbs,3)
+```
+
+This plot shows the actual and expected number of customers who made repeat transactions in the caliberation period binned as per frequencies
+
+### Beta negative binomial distribution
+
+```{r}
+bgnbd.PlotFrequencyInCalibration(params_bgnbd,cal.cbs,3)
+```
+
+This plot shows the actual and expected number of customers who made repeat transactions in the caliberation period binned as per frequencies The difference between PNBD and BGNBD models is not much in this case
+
+## model vs actual: test (holdout) test period
+
+The frequency plot above shows that the models perform alright in the caliberation period. But that does not mean that the models are good. To test the performance of the model, it is important to see how they perform in the holdout/test period.
+
+### Function
+
+```{r}
+## Data prep for data including holdout data
+ucllog = dc.SplitUpElogForRepeatTrans(ucl_log_sum)$repeat.trans.elog
+x.star = rep(0,nrow(cal.cbs))
+cal.cbs2 = cbind(cal.cbs,x.star)
+ucllog.cust = ucllog$cust
+for (i in 1:nrow(cal.cbs2)) {
+  current.cust = rownames(cal.cbs2)[i]
+  tot.cust.trans = length(which(ucllog.cust == current.cust))
+  cal.trans = cal.cbs2[i,"x"]
+  cal.cbs2[i,"x.star"] = tot.cust.trans - cal.trans
+}
+
+cal.cbs2[1:3,]
+
+
+tot.cbt = dc.CreateFreqCBT(ucllog)
+period = range(data$InvoiceDate)[2] - threshold_date + 1
+
+fun_zero <- function(vector_with_nas) {
+  vector_with_nas[is.na(vector_with_nas)] <- 0
+  return(vector_with_nas)
+}
+```
+
+
+### Pareto/negative binomial distribution
+
+```{r}
+T.star =  as.numeric(max(ucl_log_sum$date) - threshold_date + 1)
+censor = 11
+x.star = cal.cbs2[,"x.star"]
+comp = pnbd.PlotFreqVsConditionalExpectedFrequency(params,
+                                                   T.star = T.star,
+                                                   cal.cbs = cal.cbs2,
+                                                   x.star,
+                                                   censor)
+```
+
+The PnBD model does well in the holdout period, however we do see deviations becoming larger towards the end.
+
+### Beta negative binomial distribution
+
+```{r}
+T.star =  as.numeric(max(ucl_log_sum$date) - threshold_date + 1)
+censor = 11
+x.star = cal.cbs2[,"x.star"]
+comp = bgnbd.PlotFreqVsConditionalExpectedFrequency(params_bgnbd,
+                                                    T.star = T.star,
+                                                    cal.cbs = cal.cbs2,
+                                                    x.star,
+                                                    censor)
+```
+
+The Beta negative binomial distribution model also esitmates well.
+
+# Comparing cummulative actual sales with predicted transactions
+
+Next, to check if the models capture the trend of transactions, we test how the model performs against cummulative sales in the holdout period. This in itself gives an idea as to predict customer behavior in the future.
+
+For our models they overshoot a little. So there is a need to look at the data 
+and duning the parameter so it match better our hold out period. 
+
+```{r}
+#Get total daily sales 
+d.track = rep(0, period)
+  
+origin = min(data$InvoiceDate)
+for (i in colnames(tot.cbt)) {
+  date.index = (as.numeric(difftime(as.Date(i),
+                                    origin)) + 1)
+  d.track[date.index] = sum(tot.cbt[,i])
+}
+
+# Get mean weekly actual sales 
+w.track = rep(0,round(period / 7))
+for (j in 1:length(w.track)) {
+w.track[j] =  mean(d.track[(j * 7 - 6):(j * 7)]) 
+}
+
+T.cal = (cal.cbs2[,"T.cal"])
+T.tot = as.numeric(round((range(data$InvoiceDate)[2] - range(data$InvoiceDate)[1])))
+```
+
+### Pareto/negative binomial distribution
+
+```{r}
+## Cummalative daily tracking 
+cum.track = cumsum(d.track)
+cum.tracking = pnbd.PlotTrackingCum(params,T.cal,T.tot,na.omit(cum.track),
+                                    title = "Tracking daily cumulative transactions",
+                                    xlab = "Days")
+```
+
+```{r}
+## Cummalative weekly tracking 
+cum.track.week = cumsum(w.track)
+cum.tracking.week = pnbd.PlotTrackingCum(params,T.cal,T.tot/7,na.omit(cum.track.week))
+```
+
+Pareto/Negative Binomial Distribution captures the trend in cummualtive sales reasonably well.
+
+### Beta negative binomial distribution
+
+```{r}
+## Cummalative daily tracking 
+cum.track = cumsum(d.track)
+cum.tracking = bgnbd.PlotTrackingCum(params_bgnbd,T.cal,T.tot,na.omit(cum.track), title = "Tracking daily cumulative transactions",xlab = "Days")
+```
+
+```{r}
+## Cummalative weekly tracking 
+cum.track.week = cumsum(w.track)
+cum.tracking.week = bgnbd.PlotTrackingCum(params_bgnbd,T.cal,T.tot/7,na.omit(cum.track.week))
+```
+
+Again the difference in the 2 models for this dataset is insignificant.
+
+# Weekly and Daily transactional forecasts
+
+While it was useful to check the models against cummulative sales, we could also test the models performance against daily and weekly transactions. To test the models, we first extract the actual daily and weekly values in the holdout period and then compare with the expected values
+
+## Daily forecast
+
+Both the models capture the trend in daily sales.
+
+### Pareto/negative binomial distribution
+
+```{r}
+inc.tracking.daily = pnbd.PlotTrackingInc(params,
+                                          T.cal = T.cal,
+                                          T.tot,
+                                          actual.inc.tracking.data = na.omit(d.track),
+                                          title = "Tracking daily transactions",xlab = "Days")
+```
+
+```{r}
+inc.tracking.daily[,20:30]
+```
+
+
+### Beta negative binomial distribution
+
+```{r}
+inc.tracking.daily = bgnbd.PlotTrackingInc(params_bgnbd,
+                                           T.cal = T.cal,
+                                           T.tot,
+                                           actual.inc.tracking.data = na.omit(d.track),
+                                           title = "Tracking daily transactions",xlab = "Days")
+```
+
+```{r}
+inc.tracking.daily[,20:30]
+```
+## Weekly forecast
+
+Both PnBD and BGnBD models capture the trend of weekly transactons well. The difference between the 2 models is not that significant as more than 60% of the customers are repeat customers, which is really high. While both the models capture the trend and average value of customers well, it does not capture effects of seasonality and marketing campaigns well.
+
+### Pareto/negative binomial distribution
+
+```{r}
+inc.tracking.weekly = pnbd.PlotTrackingInc(params,
+                                           T.cal = T.cal,
+                                           T.tot/7,
+                                           actual.inc.tracking.data = na.omit(w.track))
+
+```
+
+```{r}
+inc.tracking.weekly[,1:10]
+```
+
+
+### Beta negative binomial distribution
+
+```{r}
+inc.tracking.weekly = bgnbd.PlotTrackingInc(params_bgnbd,
+                                            T.cal = T.cal,
+                                            T.tot/7,
+                                            actual.inc.tracking.data = na.omit(w.track))
+
+```
+
+```{r}
+inc.tracking.weekly[,1:10]
+```
+
+# Next Steps:
+
+The analysis should be taking futhere and include more models. Specially an
+inlcusion of deep neural network should be included for the used models.
+It is for work and objects longere the road.
+
+# Conclusion
+
+The analysis is know don and we have introduced two models to capture when
+the consumer would make the next purchase and how CLV would change in the
+future. We can see that approximately the next purchase would be in the next
+three months and the CLV will increase.
+
+There is much more work to be don with the data. Here we could make deep learning
+to add season and trend. 
+
+We could also include other models to test the functionality and see if we have
+others there can be better to predict sales. 
