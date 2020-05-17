@@ -28,7 +28,7 @@ projects: []
 betragtet på lige fod med Python og kan bruges til alt; fra at bygge matematiske
 modeller til at lave hjemmesider.</p>
 <p>En af fordelene ved at bruge R er dens simple måde at lave R-pakker på. Til
-dette er Hadleys bog og siden:
+dette er <strong>Hadleys</strong> bog og hjemmeside;
 <a href="https://r-pkgs.org/" class="uri">https://r-pkgs.org/</a>
 noget for sig.
 Pakker har den fordel at du kan generalisere arbejdsopgaver og skabe en gennemsigtighed
@@ -43,7 +43,7 @@ gøres med et enkelt tryk.</p>
 <p>En korrekt struktur vil se ud på føglende måde:</p>
 <div class="figure">
 <img src="/post/2020-05-17-pakker-i-r-magasinr_files/pakke_struktur.png.PNG" alt="Pakke struktur" />
-<p class="caption">Pakke struktur</p>
+<p class="caption"><strong>Pakke struktur</strong></p>
 </div>
 <p>Ud fra ovenstående kan vi se hvordan strukturen er. Jeg vil kun gå igennem de mest
 essentielle folder og filer.</p>
@@ -61,7 +61,7 @@ så man ikke er nød til at hente dem i funktionerne.</li>
 kører lange script igennem hele tiden. Hertil kan man også lave dokumentation, så
 man kan let finde ud af hvad funktionen gør.</p>
 <p>Jeg vil vise to eksempler på nogle funktioner, som jeg har bygget og som gør
-det letter for mig selv, men også mine kollegaer at skrive koden.</p>
+det lettere for mig selv, men også mine kollegaer at skrive koden.</p>
 <div id="hent-data" class="section level2">
 <h2>Hent data</h2>
 <p>Man er ofte nød til at hente data fra forskellig kilder. Det kan man gøre på forskellig
@@ -94,29 +94,30 @@ gefion_query &lt;- function(statement, username, password) {
   result
 }</code></pre>
 <p>Så er det hvordan en simpel funktion vil se ud. Her har vi en titel, beskrivelse
-og selve funktionen. Denne funktion går det let forbrugeren at skabe forbindelse
+og selve funktionen. Denne funktion går det let for brugeren at skabe en forbindelse
 til en datawarehouse og hente det data man ønsker.
 Her kan brugeren måske være i tvivl om hvad funktionen gør, men R laver dokumentation
 for en, som man let kan finde ved at trykke f1.</p>
 <div class="figure">
 <img src="/post/2020-05-17-pakker-i-r-magasinr_files/docg.PNG" alt="Funktion dokumentation" />
-<p class="caption">Funktion dokumentation</p>
+<p class="caption"><strong>Funktion dokumentation</strong></p>
 </div>
-<p>Det er altså let og meget gennemskueligt for brugeren, når en funktion skal burge.
+<p>Det er altså let og meget gennemskueligt for brugeren, når en funktion skal burges.
 Hermed skaber man en let måde at hente data og lave noget manipulation, såsom
 at gøre bogstaver små, som gøres foroven med <code>rename_all(tolower)</code>.</p>
 </div>
 <div id="plot-funktion" class="section level2">
 <h2>Plot funktion</h2>
-<p>Uanset i hvilken position man sidder er det altid nødvendig at lave grafer over
-sit data. Det kan ofte være rigtig tidskrævende uasnet om man bruge excel, r eller
-python. Derfor er det en god ide at lave en graf funktion, som har alle de ønskede funktionaliteter
-der er behov for. Hermed mener jeg at man sørger for den kan plotte linjer, facet,
+<p>Uanset i hvilken position man sidder i er det ofte nødvendig at lave grafer over
+sit data. Det kan være tidskrævende uanset om man bruge excel, R eller
+Python. Derfor er det en god ide at lave en graf-funktion, som har alle de ønskede
+funktionaliteter. Hermed mener jeg at man sørger for den kan plotte linjer, facet,
 liggende, aggeringer osv.</p>
-<p>Det er noget jeg har arbejdet på med at lave en følgene funktion der gør
-livet så meget letter:</p>
+<p>Det er noget jeg har arbejdet på med at lave følgende funktion der gør
+denne type opgaver så meget letter:</p>
 <p>Selve funktioner er lang, så jeg viser et udsnit af den;</p>
-<pre class="r"><code>function(data, x, y, type, groups = NULL, facets = NULL, bubble_size,
+<pre class="r"><code># Input til funktionen;
+function(data, x, y, type, groups = NULL, facets = NULL, bubble_size,
          low_limit_y = NULL, up_limit_y = NULL, y_breaks = 5,
          low_limit_x = NULL, up_limit_x = NULL, x_breaks = 5,
          y_lab, x_lab, title, axis_title_size = 10, axis_label_size = 8,
@@ -125,6 +126,7 @@ livet så meget letter:</p>
          legend_position = &quot;bottom&quot;, group_name, panel_spaces = 2, scale_y_lab = T,
          dodge_width = 1, dodge_preserve = &quot;single&quot;,
          interactive = FALSE, tooltips) {
+  # Selve funktionen;
   data &lt;- data %&gt;%
     dplyr::ungroup() %&gt;%
     dplyr::mutate(old_y = !!(as.name(y))) %&gt;%
@@ -152,8 +154,9 @@ livet så meget letter:</p>
   # .
   # osv.
 }</code></pre>
-<p>Her kan man igen læse en god beskrivelse af hvad funktionen gør.</p>
-<p>Men her kan man tage sit data og lave nogle hurtige plots, med meget får kode,
+<p>Her kan man igen læse en god beskrivelse af hvad funktionen gør. Man kan til og
+med inkluderer et eksempel.</p>
+<p>Men her kan man tage sit data og lave nogle hurtige plots, med meget få koder,
 som før ville have krævet meget mere.</p>
 </div>
 </div>

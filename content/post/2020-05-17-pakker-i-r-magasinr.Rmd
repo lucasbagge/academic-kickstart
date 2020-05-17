@@ -36,7 +36,7 @@ betragtet på lige fod med Python og kan bruges til alt; fra at bygge matematisk
 modeller til at lave hjemmesider.
 
 En af fordelene ved at bruge R er dens simple måde at lave R-pakker på. Til 
-dette er Hadleys bog og siden: 
+dette er **Hadleys** bog og hjemmeside; 
 https://r-pkgs.org/
 noget for sig.
 Pakker har den fordel at du kan generalisere arbejdsopgaver og skabe en gennemsigtighed
@@ -51,7 +51,7 @@ gøres med et enkelt tryk.
 
 En korrekt struktur vil se ud på føglende måde:
 
-![Pakke struktur](/post/2020-05-17-pakker-i-r-magasinr_files/pakke_struktur.png.PNG)
+![**Pakke struktur**](/post/2020-05-17-pakker-i-r-magasinr_files/pakke_struktur.png.PNG)
 
 Ud fra ovenstående kan vi se hvordan strukturen er. Jeg vil kun gå igennem de mest 
 essentielle folder og filer.
@@ -69,7 +69,7 @@ kører lange script igennem hele tiden. Hertil kan man også lave dokumentation,
 man kan let finde ud af hvad funktionen gør. 
 
 Jeg vil vise to eksempler på nogle funktioner, som jeg har bygget og som gør
-det letter for mig selv, men også mine kollegaer at skrive koden.
+det lettere for mig selv, men også mine kollegaer at skrive koden.
 
 ## Hent data
 
@@ -109,31 +109,32 @@ gefion_query <- function(statement, username, password) {
 ```
 
 Så er det hvordan en simpel funktion vil se ud. Her har vi en titel, beskrivelse
-og selve funktionen. Denne funktion går det let forbrugeren at skabe forbindelse
+og selve funktionen. Denne funktion går det let for brugeren at skabe en forbindelse
 til en datawarehouse og hente det data man ønsker.
 Her kan brugeren måske være i tvivl om hvad funktionen gør, men R laver dokumentation
 for en, som man let kan finde ved at trykke f1.
 
-![Funktion dokumentation](/post/2020-05-17-pakker-i-r-magasinr_files/docg.PNG)
+![**Funktion dokumentation**](/post/2020-05-17-pakker-i-r-magasinr_files/docg.PNG)
 
-Det er altså let og meget gennemskueligt for brugeren, når en funktion skal burge.
+Det er altså let og meget gennemskueligt for brugeren, når en funktion skal burges.
 Hermed skaber man en let måde at hente data og lave noget manipulation, såsom
 at gøre bogstaver små, som gøres foroven med `rename_all(tolower)`.
 
 ## Plot funktion
 
-Uanset i hvilken position man sidder er det altid nødvendig at lave grafer over
-sit data. Det kan ofte være rigtig tidskrævende uasnet om man bruge excel, r eller
-python. Derfor er det en god ide at lave en graf funktion, som har alle de ønskede funktionaliteter
-der er behov for. Hermed mener jeg at man sørger for den kan plotte linjer, facet,
+Uanset i hvilken position man sidder i er det ofte nødvendig at lave grafer over
+sit data. Det kan være tidskrævende uanset om man bruge excel, R eller
+Python. Derfor er det en god ide at lave en graf-funktion, som har alle de ønskede
+funktionaliteter. Hermed mener jeg at man sørger for den kan plotte linjer, facet,
 liggende, aggeringer osv.
 
-Det er noget jeg har arbejdet på med at lave en følgene funktion der gør
-livet så meget letter:
+Det er noget jeg har arbejdet på med at lave følgende funktion der gør
+denne type opgaver så meget letter:
 
 Selve funktioner er lang, så jeg viser et udsnit af den;
 
 ```{r, results='hide'}
+# Input til funktionen;
 function(data, x, y, type, groups = NULL, facets = NULL, bubble_size,
                      low_limit_y = NULL, up_limit_y = NULL, y_breaks = 5,
                      low_limit_x = NULL, up_limit_x = NULL, x_breaks = 5,
@@ -143,7 +144,7 @@ function(data, x, y, type, groups = NULL, facets = NULL, bubble_size,
                      legend_position = "bottom",  group_name, panel_spaces = 2, scale_y_lab = T,
                      dodge_width = 1, dodge_preserve = "single",
                      interactive = FALSE, tooltips){
-
+# Selve funktionen;
   data <- data %>%
     dplyr::ungroup() %>%
     dplyr::mutate(old_y = !!(as.name(y))) %>%
@@ -172,9 +173,10 @@ function(data, x, y, type, groups = NULL, facets = NULL, bubble_size,
 }
 ```
 
-Her kan man igen læse en god beskrivelse af hvad funktionen gør.
+Her kan man igen læse en god beskrivelse af hvad funktionen gør. Man kan til og 
+med inkluderer et eksempel.
 
-Men her kan man tage sit data og lave nogle hurtige plots, med meget får kode,
+Men her kan man tage sit data og lave nogle hurtige plots, med meget få koder,
 som før ville have krævet meget mere.
 
 # Konklusion
