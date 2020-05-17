@@ -31,10 +31,10 @@ modeller til at lave hjemmesider.</p>
 dette er Hadleys bog og siden:
 <a href="https://r-pkgs.org/" class="uri">https://r-pkgs.org/</a>
 noget for sig.
-Pakker har den fordel at du kan generalisere arbejdsopgaver og skabe en gennemskurlighed
+Pakker har den fordel at du kan generalisere arbejdsopgaver og skabe en gennemsigtighed
 for dine kollegaer, som ikke nødvendigvis er så komfortable med scripting.
 I denne post vil jeg vise en simpel pakke struktur og hvordan man kan gøre arbejdsopgaver
-letter.</p>
+lettere.</p>
 </div>
 <div id="struktur" class="section level1">
 <h1>Struktur</h1>
@@ -42,7 +42,124 @@ letter.</p>
 gøres med et enkelt tryk.</p>
 <p>En korrekt struktur vil se ud på føglende måde:</p>
 <div class="figure">
-<img src="pakke_struktur.png.PNG" alt="Pakke struktur" />
+<img src="/post/2020-05-17-pakker-i-r-magasinr_files/pakke_struktur.png.PNG" alt="Pakke struktur" />
 <p class="caption">Pakke struktur</p>
 </div>
+<p>Ud fra ovenstående kan vi se hvordan strukturen er. Jeg vil kun gå igennem de mest
+essentielle folder og filer.</p>
+<ul>
+<li><code>R</code> er den folder hvor vi har alle ens funktioner.</li>
+<li><code>test</code> er hvor vi inkluderer test af vores funktioner, så vi sikrer os alt
+kører som det skal.</li>
+<li><code>DESCRIPTION</code> er hvad pakken skal indeholder. Her definerer vi også andre pakker,
+så man ikke er nød til at hente dem i funktionerne.</li>
+</ul>
+</div>
+<div id="funktioner" class="section level1">
+<h1>Funktioner</h1>
+<p>Funktioner er med til at skabe et flow i sit arbejde og så man ikke er nød til at
+kører lange script igennem hele tiden. Hertil kan man også lave dokumentation, så
+man kan let finde ud af hvad funktionen gør.</p>
+<p>Jeg vil vise to eksempler på nogle funktioner, som jeg har bygget og som gør
+det letter for mig selv, men også mine kollegaer at skrive koden.</p>
+<div id="hent-data" class="section level2">
+<h2>Hent data</h2>
+<p>Man er ofte nød til at hente data fra forskellig kilder. Det kan man gøre på forskellig
+vis. Hvis man bruge Google Big query så kan man benytte sig af quries. Dog kan
+man i <code>R</code> skrive kode forklædt som quries og hente data.</p>
+<p>Hvis vi ser følgende;</p>
+<pre class="r"><code>#&#39; Query the Gefion database for data.
+#&#39;
+#&#39; Make connection to Gefion database.
+#&#39;
+#&#39; Details.
+#&#39;
+#&#39; @param statement SQL statement to execute against the DB.
+#&#39; @param username The Gefion user to connect with.
+#&#39; @param password The Gefion user&#39;s password.
+#&#39;
+#&#39; @return A data frame with the query result.
+#&#39;
+#&#39; @export
+gefion_query &lt;- function(statement, username, password) {
+  connection &lt;- gefion_connection(username = username, password = password)
+
+  result &lt;- DBI::dbGetQuery(connection, statement) %&gt;% as_tibble()
+
+  DBI::dbDisconnect(connection)
+
+  # do your preprocessing with result here result &lt;- result %&gt;% ...
+  result &lt;- result %&gt;% rename_all(tolower)
+
+  result
+}</code></pre>
+<p>Så er det hvordan en simpel funktion vil se ud. Her har vi en titel, beskrivelse
+og selve funktionen. Denne funktion går det let forbrugeren at skabe forbindelse
+til en datawarehouse og hente det data man ønsker.
+Her kan brugeren måske være i tvivl om hvad funktionen gør, men R laver dokumentation
+for en, som man let kan finde ved at trykke f1.</p>
+<div class="figure">
+<img src="/post/2020-05-17-pakker-i-r-magasinr_files/docg.PNG" alt="Funktion dokumentation" />
+<p class="caption">Funktion dokumentation</p>
+</div>
+<p>Det er altså let og meget gennemskueligt for brugeren, når en funktion skal burge.
+Hermed skaber man en let måde at hente data og lave noget manipulation, såsom
+at gøre bogstaver små, som gøres foroven med <code>rename_all(tolower)</code>.</p>
+</div>
+<div id="plot-funktion" class="section level2">
+<h2>Plot funktion</h2>
+<p>Uanset i hvilken position man sidder er det altid nødvendig at lave grafer over
+sit data. Det kan ofte være rigtig tidskrævende uasnet om man bruge excel, r eller
+python. Derfor er det en god ide at lave en graf funktion, som har alle de ønskede funktionaliteter
+der er behov for. Hermed mener jeg at man sørger for den kan plotte linjer, facet,
+liggende, aggeringer osv.</p>
+<p>Det er noget jeg har arbejdet på med at lave en følgene funktion der gør
+livet så meget letter:</p>
+<p>Selve funktioner er lang, så jeg viser et udsnit af den;</p>
+<pre class="r"><code>function(data, x, y, type, groups = NULL, facets = NULL, bubble_size,
+         low_limit_y = NULL, up_limit_y = NULL, y_breaks = 5,
+         low_limit_x = NULL, up_limit_x = NULL, x_breaks = 5,
+         y_lab, x_lab, title, axis_title_size = 10, axis_label_size = 8,
+         data_labels = FALSE, data_label_size = 4, label_vjust = 1, label_hjust = 0.5,
+         show_legend = TRUE, show_legend_title = FALSE, legend_cols = 4,
+         legend_position = &quot;bottom&quot;, group_name, panel_spaces = 2, scale_y_lab = T,
+         dodge_width = 1, dodge_preserve = &quot;single&quot;,
+         interactive = FALSE, tooltips) {
+  data &lt;- data %&gt;%
+    dplyr::ungroup() %&gt;%
+    dplyr::mutate(old_y = !!(as.name(y))) %&gt;%
+    dplyr::mutate(!!y := annalectr:::label.format(!!(as.name(y))))
+
+  if (!missing(bubble_size)) {
+    if (!grepl(&quot;\\D&quot;, bubble_size)) {
+      bubble_size &lt;- as.numeric(bubble_size)
+    }
+  } else {
+    bubble_size &lt;- NULL
+  }
+
+  if (type == &quot;bubble&quot;) {
+    data &lt;- data %&gt;%
+      dplyr::mutate(old_bubble_size = !!(as.name(bubble_size))) %&gt;%
+      dplyr::mutate(!!bubble_size := annalectr:::label.format(!!(as.name(bubble_size))))
+  }
+
+  if (is.null(groups)) {
+    show_legend &lt;- FALSE
+  }
+  # .
+  # .
+  # .
+  # osv.
+}</code></pre>
+<p>Her kan man igen læse en god beskrivelse af hvad funktionen gør.</p>
+<p>Men her kan man tage sit data og lave nogle hurtige plots, med meget får kode,
+som før ville have krævet meget mere.</p>
+</div>
+</div>
+<div id="konklusion" class="section level1">
+<h1>Konklusion</h1>
+<p>Jeg har her gennemgået hvordan man kan lette arbejdsprocessen for ens kollegaer
+ved at lave funktioner, som gør det hurtigere og letter at hente data og
+visualiserer det.</p>
 </div>
