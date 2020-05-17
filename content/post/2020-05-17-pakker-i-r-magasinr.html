@@ -20,38 +20,29 @@ image:
 projects: []
 ---
 
-```{r setup, include=FALSE}
-library(knitr)
-knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, 
-                      echo = TRUE, dpi = 300, cache.lazy = FALSE,
-                      tidy = "styler", fig.width = 8, fig.height = 5)
-library(scales)
-library(tidyverse)
-```
 
-# Introduktion
 
-R er et af de foretrukkende sprog indenfor Data Scientist feltet. Det bliver
+<div id="introduktion" class="section level1">
+<h1>Introduktion</h1>
+<p>R er et af de foretrukkende sprog indenfor Data Scientist feltet. Det bliver
 betragtet på lige fod med Python og kan bruges til alt; fra at bygge matematiske
-modeller til at lave hjemmesider.
-
-En af fordelene ved at bruge R er dens simple måde at lave R-pakker på. Til 
-dette er Hadleys bog og siden: 
-https://r-pkgs.org/
+modeller til at lave hjemmesider.</p>
+<p>En af fordelene ved at bruge R er dens simple måde at lave R-pakker på. Til
+dette er Hadleys bog og siden:
+<a href="https://r-pkgs.org/" class="uri">https://r-pkgs.org/</a>
 noget for sig.
 Pakker har den fordel at du kan generalisere arbejdsopgaver og skabe en gennemskurlighed
 for dine kollegaer, som ikke nødvendigvis er så komfortable med scripting.
 I denne post vil jeg vise en simpel pakke struktur og hvordan man kan gøre arbejdsopgaver
-letter. 
-
-# Struktur
-
-Det er utrolig simpel at lave en pakkke og med Rstudio **addins**, så kan det 
-gøres med et enkelt tryk.
-
-En korrekt struktur vil se ud på føglende måde:
-
-![Pakke struktur](pakke_struktur.png.PNG)
-
-
-
+letter.</p>
+</div>
+<div id="struktur" class="section level1">
+<h1>Struktur</h1>
+<p>Det er utrolig simpel at lave en pakkke og med Rstudio <strong>addins</strong>, så kan det
+gøres med et enkelt tryk.</p>
+<p>En korrekt struktur vil se ud på føglende måde:</p>
+<div class="figure">
+<img src="pakke_struktur.png.PNG" alt="Pakke struktur" />
+<p class="caption">Pakke struktur</p>
+</div>
+</div>
