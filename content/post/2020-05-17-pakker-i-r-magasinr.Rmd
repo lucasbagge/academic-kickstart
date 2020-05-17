@@ -1,0 +1,21 @@
+---
+title: Pakker i r "magasinr"
+author: Lucas Bagge
+date: '2020-05-17'
+slug: pakker-i-r-magasinr
+categories:
+  - R pakker
+tags:
+  - R pakker
+subtitle: 'Hvad kan det bruges til'
+summary: 'I denne post vil jeg beskrive hvordan R-pakke strukturen er og hvordan
+man kan det hverdagen letter ved at bruge dem.'
+authors: []
+lastmod: '2020-05-17T14:23:59+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
