@@ -1,0 +1,137 @@
+---
+title: Tidymodels and parship
+author: Lucas Bagge
+date: '2020-05-17'
+slug: tidymodels-and-parship
+categories:
+  - logistic regression
+  - random forest
+  - tidymodels
+  - parship
+tags:
+  - tidymodels
+  - ML
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-05-17T20:19:54+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, 
+                      echo = TRUE, dpi = 300, cache.lazy = FALSE,
+                      tidy = "styler", fig.width = 8, fig.height = 5)
+library(tidymodels)
+library(skimr)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+```
+
+```{r}
+#Read the data 
+data = read.csv("data_sales.csv",
+                stringsAsFactors = F)
+#Fix the date 
+data = data %>% 
+  mutate(InvoiceDate = as.Date(as.POSIXct(InvoiceDate,format = "%m/%d/%Y %H:%M"))) %>% 
+  drop_na()
+```
+
+```{r}
+data %>% 
+  skim()
+```
+
+
+```{r}
+#1. Get Recency, First purchase and last purchase made by customers and the total value of each transaction (QTY*PRICE)
+max_InvoiceDate = max(data$InvoiceDate)
+# today = max_InvoiceDate+2
+data = data %>% 
+  group_by(CustomerID) %>%
+  mutate(Recency = max_InvoiceDate - max(InvoiceDate),
+         First_purchase = max_InvoiceDate - min(InvoiceDate) ,
+         Value = Quantity*UnitPrice, 
+         Frequency = n_distinct(InvoiceNo)) %>%
+  arrange(InvoiceDate) %>% 
+  ungroup()
+
+# 2. Filter out Qty < 0 
+neg = data %>% 
+  filter(Quantity < 0)
+data = data %>%
+  filter(Quantity >= 0)
+
+# 3. Get customers with repeat transactions
+data = data %>%
+  group_by(CustomerID) %>%
+  mutate(repeat_customers = ifelse(n_distinct(InvoiceNo) > 1,n_distinct(InvoiceNo),0),
+         churn = ifelse(repeat_customers == 0, "yes", "no")) %>% 
+  ungroup()
+
+# 4. Get the country with the most customer.
+data = data %>%
+  filter(Country == "United Kingdom")
+
+rm(max_InvoiceDate,neg)
+```
+
+```{r}
+data %>% 
+  skim()
+```
+
+```{r}
+set.seed(1972)
+
+train_test_split <- 
+  initial_split(
+    data = data,
+    prop = 0.80
+  )
+train_test_split
+```
+
+```{r}
+train_tbl <- train_test_split %>% 
+  training()
+
+test_tbl <- train_test_split %>% 
+  testing()
+```
+
+```{r}
+recipe_simple <- function(dataset) {
+  recipe(churn ~ ., data = dataset) %>% 
+    step_string2factor(all_nominal(),
+                       -all_outcomes()) %>% 
+    prep(data = dataset)
+}
+```
+
+```{r}
+recipe_prepped <- recipe_simple(dataset = train_tbl)
+```
+
+```{r}
+train_baked <- bake(
+  recipe_prepped,
+  new_data = train_tbl
+)
+
+test_baked <- bake(
+  recipe_prepped,
+  new_data = test_tbl
+)
+```
+
+
