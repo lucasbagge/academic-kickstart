@@ -1,0 +1,308 @@
+---
+title: XGBoost med Tidymodels
+author: Lucas Bagge
+date: '2020-05-22'
+slug: xgboost-med-tidymodels
+categories:
+  - tidymodels
+  - xgboost
+tags:
+  - xgboost
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-05-22T14:42:57+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, 
+                      echo = TRUE, dpi = 300, cache.lazy = FALSE,
+                      tidy = "styler", fig.width = 8, fig.height = 5)
+library(tidymodels)
+library(skimr)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+theme_set(theme_minimal())
+```
+
+Der er ikke meget data pre-processiong når vi bruger **XGBoost**. Dog skal vi bruge
+megeet tid på at tune vores **hyperparameter**.
+
+VI vil i denne opslag se på om et beach volley hold vil vinde eller tabe. 
+
+## Explore data
+
+```{r}
+vb_matches <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-19/vb_matches.csv', guess_max = 76000)
+
+vb_matches
+```
+
+Der er en masse data. Detr er godt når vi skal forsøge at tune vores model. 
+Det er strukturel data, men vi skal lave noget reshape for at gøre det klar.
+
+Vi har inforamtion om volleybold cirkel og navnet om det e rmænd eller kvninder.
+VI har også for dem som har vundet og de som har tabt. Der er også om det er par
+eller i flere hold. 
+
+Jeg vil gerne have af vide hvad der sker andre kamepen, aå det er sttacks. Her vil vi så
+træne en model der forudsige vind eller tab på de tags. 
+
+Vi har en række per match som vi vil ændre
+
+```{r}
+vb_parsed <- vb_matches %>% 
+  transmute(
+    circuit,
+    gender,
+    year,
+    # vil to hold team med større sandynlihghed veinde for nogle fejl eller sttacks
+    w_attacks = w_p1_tot_attacks + w_p2_tot_attacks,
+    w_kills = w_p1_tot_kills + w_p2_tot_kills,
+    w_errors = w_p1_tot_errors + w_p2_tot_errors,
+    w_aces = w_p1_tot_aces + w_p2_tot_aces,
+    w_serve_errors = w_p1_tot_serve_errors + w_p2_tot_serve_errors,
+    w_blocks = w_p1_tot_blocks + w_p2_tot_blocks,
+    w_digs = w_p1_tot_digs + w_p2_tot_digs,
+    l_attacks = l_p1_tot_attacks + l_p2_tot_attacks,
+    l_kills = l_p1_tot_kills + l_p2_tot_kills,
+    l_errors = l_p1_tot_errors + l_p2_tot_errors,
+    l_aces = l_p1_tot_aces + l_p2_tot_aces,
+    l_serve_errors = l_p1_tot_serve_errors + l_p2_tot_serve_errors,
+    l_blocks = l_p1_tot_blocks + l_p2_tot_blocks,
+    l_digs = l_p1_tot_digs + l_p2_tot_digs
+  ) %>% 
+  na.omit()
+library(dplyr, warn.conflicts = FALSE)
+
+winner <- vb_parsed %>% 
+  select(circuit, gender, year,
+         w_attacks:w_digs) %>% 
+  rename_all(function(x) gsub("w_", "", x)) %>% 
+  mutate(win = "win")
+
+losers <- vb_parsed %>% 
+  select(circuit, gender, year,
+         l_attacks:l_digs) %>% 
+  rename_all(function(x) gsub("l_", "", x)) %>% 
+  mutate(win = "lose")
+
+vb_df <- bind_rows(winner,
+                   losers) %>% 
+  mutate_if(is.character, factor)
+
+vb_df %>%  count(gender)
+```
+
+I de tidligere år hold de ikke øje med det. Derfor kan vi slette na.
+Der ryger en del observationer, men det er stadig nok til vi kan lave voresa model.
+Vi vil have en række for hver udkom.
+
+Desuden bygger vi en to data frames med vinder og taber. 
+
+Nu vil vi se yderligere undersøgelse.
+
+
+```{r}
+library(tidyquant)
+
+vb_df %>% 
+  pivot_longer(attacks:digs, names_to = "stat", values_to = "value") %>% 
+  ggplot(aes(gender, value, fill = win, color = win)) +
+  geom_boxplot(alpha = 0.4) +
+  facet_wrap(~ stat, scales = "free_y", nrow = 2) +
+  labs(y = NULL, color = NULL, fill = NULL)
+```
+
+Vi har delt ud på mænd og kvinder. Der er nogle ting som er meget lig hvad vi ville
+forvente. Dog e serve_error ikke den store betydning. Error har en stor betydning.
+Attacks ser ud at der ingen forskel er. Der er 300, men gad vide om det er en fejl eller?
+
+## Byg modellen
+
+```{r}
+set.seed(123)
+# Split data
+vb_split <- initial_split(vb_df, strata = win)
+vb_train <- training(vb_split)
+vb_test <- testing(vb_split)
+```
+
+Sæt nu på model specifikationerne.
+
+- XGBoost modeller er baseret på træer. **Decision tree** kan klare alt data,
+det skal ikke være faktor ller numerisk.  
+
+```{r}
+xgb_spec <- boost_tree(
+  # skal håndtere en masse model parameter vi skal tune
+  # vi tuner ikke træet men sørger for der er nok af dem.
+  trees = 1000,
+  # hyper parameter
+  # de handler om model kompleksitet. 
+  tree_depth = tune(), min_n = tune(), loss_reduction = tune(),
+  sample = tune(), mtry = tune(),
+  learn_rate = tune()
+) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("classification")
+
+xgb_spec
+```
+
+Det er en model spec. Vi har det klar og nu skal vi sætte op hvilke værdier vi vil prøve.
+
+Her kan man regular bread `grid_regular` så vi finder den bedste kombination.
+Det vil tage lang tid. 
+
+En anden metode er `grid_max_entropy` som dækker paramter spave og udfylder
+den med 6 dimensioner som vi har valgt i vores model spec. 
+
+Så er to som jeg har nævnt. 
+
+```{r}
+xgb_grid <- grid_latin_hypercube(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  # sample størrelsen  er en andel
+  sample_size = sample_prop(),
+  # har en ukendt, ds vi ved  ikke hvor mange data punkter.
+  # 
+  finalize(mtry(), vb_train),
+  learn_rate(),
+  size = 20 
+)
+xgb_grid
+```
+
+Vi bestluttede hvad hyper paramter skulle være og her foroven har
+vi mulige. Der er 20 modeller og vi ser hvilken der er bedst.
+
+```{r}
+xgb_wf <- workflow() %>% 
+  add_formula(win~ .) %>% 
+  add_model(xgb_spec)
+xgb_wf
+```
+
+Pre processer er det går gennem nogle skrdit for hvad der skal til før 
+det er færdig.
+
+Nu skal vi tune vores model
+
+```{r}
+set.seed(123)
+
+vb_folds <- vfold_cv(vb_train, strata = win)
+vb_folds
+```
+
+Det er en 10 fold cross validation.  så det er vores plit og det data er 
+klar vi kan gøre med
+
+```{r}
+doParallel::registerDoParallel()
+
+set.seed(234)
+xgb_res <- tune_grid(
+  xgb_wf,
+  resamples = vb_folds,
+  grid = xgb_grid,
+  control = control_grid(save_pred = TRUE)
+)
+
+xgb_res
+```
+
+Det tager lidt tid.
+
+## Undersøg resultater
+
+```{r}
+xgb_res %>% 
+  collect_metrics()
+```
+
+Vi kan her se prøcision og real under kurven (ROC)
+
+
+```{r}
+xgb_res %>% 
+  collect_metrics() %>% 
+  filter(.metric == "roc_auc") %>% 
+  select(mean, mtry:sample_size) %>% 
+  pivot_longer(mtry:sample_size,
+               names_to = "parameter",
+               values_to = "value") %>% 
+  ggplot(aes(value, mean, color = parameter)) +
+  geom_point(show.legend = FALSE) +
+  facet_wrap(~ parameter, scales = "free_x")
+```
+
+Det vi har på x aksen er arealet under kurven. tree depht går ned og meget op. Er der nogle som er klart bedre? 
+
+```{r}
+show_best(xgb_res, "roc_auc") %>% 
+  kable()
+
+best_auv <- select_best(xgb_res, "roc_auc")
+
+best_auv %>% kable()
+
+final_xgb <- finalize_workflow(xgb_wf, best_auv)
+final_xgb
+```
+Der er stor forskel i parameterne.   
+
+Vi har valgt den bedste mode. 
+
+```{r}
+library(vip)
+
+final_xgb %>% 
+  fit(data = vb_train) %>% 
+pull_workflow_fit() %>% 
+  vip(geom = "point")
+```
+
+Med ovenstående graf kan vi se hvilke dele der bidrage til klassificering. Kills og errors er vigtigste i om man vinder en kamp.
+
+```{r}
+final_res <- last_fit(final_xgb, vb_split)
+final_res %>% 
+  collect_metrics
+```
+
+Vi overfitter ikke. 
+
+```{r}
+final_res %>% 
+  collect_predictions() %>% 
+  conf_mat(win, .pred_class)
+```
+ 
+```{r}
+final_res %>%
+  collect_predictions() %>%
+  roc_curve(win, .pred_win) %>%
+  ggplot(aes(x = 1 - specificity, y = sensitivity)) +
+  geom_line(size = 1.5, color = "midnightblue") +
+  geom_abline(
+    lty = 2, alpha = 0.5,
+    color = "gray50",
+    size = 1.2
+  )
+```
+  
+De er forussigelse på testing data. Vi kan se fra vores plot hvordan modellen klare sig.
+ 
