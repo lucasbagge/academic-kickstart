@@ -1,0 +1,565 @@
+---
+title: Tidymodels and parship
+author: Lucas Bagge
+date: '2020-05-17'
+slug: tidymodels-and-parship
+categories:
+  - logistic regression
+  - random forest
+  - tidymodels
+  - parship
+tags:
+  - tidymodels
+  - ML
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-05-17T20:19:54+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+
+
+<pre class="r"><code># Read the data
+data &lt;- read.csv(&quot;data_sales.csv&quot;,
+  stringsAsFactors = F
+)
+# Fix the date
+data &lt;- data %&gt;%
+  mutate(InvoiceDate = as.Date(as.POSIXct(InvoiceDate, format = &quot;%m/%d/%Y %H:%M&quot;))) %&gt;%
+  drop_na()</code></pre>
+<pre class="r"><code>data %&gt;%
+  skim()</code></pre>
+<table>
+<caption><span id="tab:unnamed-chunk-2">Table 1: </span>Data summary</caption>
+<tbody>
+<tr class="odd">
+<td align="left">Name</td>
+<td align="left">Piped data</td>
+</tr>
+<tr class="even">
+<td align="left">Number of rows</td>
+<td align="left">403182</td>
+</tr>
+<tr class="odd">
+<td align="left">Number of columns</td>
+<td align="left">8</td>
+</tr>
+<tr class="even">
+<td align="left">_______________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Column type frequency:</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">character</td>
+<td align="left">4</td>
+</tr>
+<tr class="odd">
+<td align="left">Date</td>
+<td align="left">1</td>
+</tr>
+<tr class="even">
+<td align="left">numeric</td>
+<td align="left">3</td>
+</tr>
+<tr class="odd">
+<td align="left">________________________</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">Group variables</td>
+<td align="left">None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: character</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">min</th>
+<th align="right">max</th>
+<th align="right">empty</th>
+<th align="right">n_unique</th>
+<th align="right">whitespace</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">InvoiceNo</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="right">7</td>
+<td align="right">0</td>
+<td align="right">22161</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">StockCode</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">12</td>
+<td align="right">0</td>
+<td align="right">3603</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Description</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="right">35</td>
+<td align="right">0</td>
+<td align="right">3792</td>
+<td align="right">949</td>
+</tr>
+<tr class="even">
+<td align="left">Country</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">3</td>
+<td align="right">20</td>
+<td align="right">0</td>
+<td align="right">37</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: Date</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="left">min</th>
+<th align="left">max</th>
+<th align="left">median</th>
+<th align="right">n_unique</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">InvoiceDate</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="left">2010-12-01</td>
+<td align="left">2011-12-09</td>
+<td align="left">2011-07-31</td>
+<td align="right">305</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: numeric</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">p0</th>
+<th align="right">p25</th>
+<th align="right">p50</th>
+<th align="right">p75</th>
+<th align="right">p100</th>
+<th align="left">hist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Quantity</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">12.04</td>
+<td align="right">172.76</td>
+<td align="right">-74215</td>
+<td align="right">2.00</td>
+<td align="right">5.00</td>
+<td align="right">12.00</td>
+<td align="right">74215</td>
+<td align="left">▁▁▇▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">UnitPrice</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">3.48</td>
+<td align="right">69.63</td>
+<td align="right">0</td>
+<td align="right">1.25</td>
+<td align="right">1.95</td>
+<td align="right">3.75</td>
+<td align="right">38970</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">CustomerID</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">15287.69</td>
+<td align="right">1714.01</td>
+<td align="right">12346</td>
+<td align="right">13952.00</td>
+<td align="right">15152.00</td>
+<td align="right">16791.00</td>
+<td align="right">18287</td>
+<td align="left">▇▇▇▇▇</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># 1. Get Recency, First purchase and last purchase made by customers and the total value of each transaction (QTY*PRICE)
+max_InvoiceDate &lt;- max(data$InvoiceDate)
+# today = max_InvoiceDate+2
+data &lt;- data %&gt;%
+  group_by(CustomerID) %&gt;%
+  mutate(
+    Recency = max_InvoiceDate - max(InvoiceDate),
+    First_purchase = max_InvoiceDate - min(InvoiceDate),
+    Value = Quantity * UnitPrice,
+    Frequency = n_distinct(InvoiceNo)
+  ) %&gt;%
+  arrange(InvoiceDate) %&gt;%
+  ungroup()
+
+# 2. Filter out Qty &lt; 0
+neg &lt;- data %&gt;%
+  filter(Quantity &lt; 0)
+data &lt;- data %&gt;%
+  filter(Quantity &gt;= 0)
+
+# 3. Get customers with repeat transactions
+data &lt;- data %&gt;%
+  group_by(CustomerID) %&gt;%
+  mutate(
+    repeat_customers = ifelse(n_distinct(InvoiceNo) &gt; 1, n_distinct(InvoiceNo), 0),
+    churn = ifelse(repeat_customers == 0, &quot;yes&quot;, &quot;no&quot;)
+  ) %&gt;%
+  ungroup()
+
+# 4. Get the country with the most customer.
+data &lt;- data %&gt;%
+  filter(Country == &quot;United Kingdom&quot;)
+
+rm(max_InvoiceDate, neg)</code></pre>
+<pre class="r"><code>data %&gt;%
+  skim()</code></pre>
+<table>
+<caption><span id="tab:unnamed-chunk-4">Table 2: </span>Data summary</caption>
+<tbody>
+<tr class="odd">
+<td align="left">Name</td>
+<td align="left">Piped data</td>
+</tr>
+<tr class="even">
+<td align="left">Number of rows</td>
+<td align="left">351031</td>
+</tr>
+<tr class="odd">
+<td align="left">Number of columns</td>
+<td align="left">14</td>
+</tr>
+<tr class="even">
+<td align="left">_______________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Column type frequency:</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">character</td>
+<td align="left">5</td>
+</tr>
+<tr class="odd">
+<td align="left">Date</td>
+<td align="left">1</td>
+</tr>
+<tr class="even">
+<td align="left">difftime</td>
+<td align="left">2</td>
+</tr>
+<tr class="odd">
+<td align="left">numeric</td>
+<td align="left">6</td>
+</tr>
+<tr class="even">
+<td align="left">________________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Group variables</td>
+<td align="left">None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: character</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">min</th>
+<th align="right">max</th>
+<th align="right">empty</th>
+<th align="right">n_unique</th>
+<th align="right">whitespace</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">InvoiceNo</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="right">6</td>
+<td align="right">0</td>
+<td align="right">16638</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">StockCode</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">12</td>
+<td align="right">0</td>
+<td align="right">3564</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Description</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="right">35</td>
+<td align="right">0</td>
+<td align="right">3741</td>
+<td align="right">793</td>
+</tr>
+<tr class="even">
+<td align="left">Country</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">14</td>
+<td align="right">14</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">churn</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">2</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">2</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: Date</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="left">min</th>
+<th align="left">max</th>
+<th align="left">median</th>
+<th align="right">n_unique</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">InvoiceDate</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="left">2010-12-01</td>
+<td align="left">2011-12-09</td>
+<td align="left">2011-08-01</td>
+<td align="right">305</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: difftime</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="left">min</th>
+<th align="left">max</th>
+<th align="left">median</th>
+<th align="right">n_unique</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Recency</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="left">0 days</td>
+<td align="left">373 days</td>
+<td align="left">15 days</td>
+<td align="right">302</td>
+</tr>
+<tr class="even">
+<td align="left">First_purchase</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="left">1 days</td>
+<td align="left">373 days</td>
+<td align="left">324 days</td>
+<td align="right">304</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: numeric</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">p0</th>
+<th align="right">p25</th>
+<th align="right">p50</th>
+<th align="right">p75</th>
+<th align="right">p100</th>
+<th align="left">hist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Quantity</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">11.80</td>
+<td align="right">133.81</td>
+<td align="right">1</td>
+<td align="right">2.00</td>
+<td align="right">4.00</td>
+<td align="right">12.00</td>
+<td align="right">74215.00</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">UnitPrice</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">2.98</td>
+<td align="right">17.94</td>
+<td align="right">0</td>
+<td align="right">1.25</td>
+<td align="right">1.95</td>
+<td align="right">3.75</td>
+<td align="right">8142.75</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">CustomerID</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">15553.45</td>
+<td align="right">1594.47</td>
+<td align="right">12346</td>
+<td align="right">14194.00</td>
+<td align="right">15525.00</td>
+<td align="right">16931.00</td>
+<td align="right">18287.00</td>
+<td align="left">▅▇▇▇▇</td>
+</tr>
+<tr class="even">
+<td align="left">Value</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">20.21</td>
+<td align="right">162.66</td>
+<td align="right">0</td>
+<td align="right">4.16</td>
+<td align="right">10.20</td>
+<td align="right">17.70</td>
+<td align="right">77183.60</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">Frequency</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">20.22</td>
+<td align="right">37.92</td>
+<td align="right">1</td>
+<td align="right">4.00</td>
+<td align="right">8.00</td>
+<td align="right">17.00</td>
+<td align="right">224.00</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">repeat_customers</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">16.35</td>
+<td align="right">31.53</td>
+<td align="right">0</td>
+<td align="right">3.00</td>
+<td align="right">7.00</td>
+<td align="right">15.00</td>
+<td align="right">210.00</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>set.seed(1972)
+
+train_test_split &lt;-
+  initial_split(
+    data = data,
+    prop = 0.80
+  )
+train_test_split</code></pre>
+<pre><code>## &lt;Training/Validation/Total&gt;
+## &lt;280825/70206/351031&gt;</code></pre>
+<pre class="r"><code>train_tbl &lt;- train_test_split %&gt;%
+  training()
+
+test_tbl &lt;- train_test_split %&gt;%
+  testing()</code></pre>
+<pre class="r"><code>recipe_simple &lt;- function(dataset) {
+  recipe(churn ~ ., data = dataset) %&gt;%
+    step_string2factor(
+      all_nominal(),
+      -all_outcomes()
+    ) %&gt;%
+    prep(data = dataset)
+}</code></pre>
+<pre class="r"><code>recipe_prepped &lt;- recipe_simple(dataset = train_tbl)</code></pre>
+<pre class="r"><code>train_baked &lt;- bake(
+  recipe_prepped,
+  new_data = train_tbl
+)
+
+test_baked &lt;- bake(
+  recipe_prepped,
+  new_data = test_tbl
+)</code></pre>
