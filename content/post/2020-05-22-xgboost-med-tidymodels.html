@@ -1,0 +1,452 @@
+---
+title: XGBoost med Tidymodels
+author: Lucas Bagge
+date: '2020-05-22'
+slug: xgboost-med-tidymodels
+categories:
+  - tidymodels
+  - xgboost
+tags:
+  - xgboost
+subtitle: 'XGBoost i tidymodels'
+summary: 'Tidymodels værktøjet er en fantastiak bidrag til modellering. I denne post vil jeg tage et volleyball data og
+finde ud af gennem en avanceret XGBoost klassificeringsmodel, om vi kan forudsige hvem der vil vinde.'
+authors: []
+lastmod: '2020-05-22T14:42:57+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+
+
+<div id="explore-data" class="section level2">
+<h2>Explore data</h2>
+<p>Målet for dette opslag er at forudsige om et beach volleyball hold af to vandt deres spil
+baseret på <em>game play stat</em>; errors, blocks, attacks. etc. Da der er er meget data, kan
+vi benytte os af en mere avanceret machine larning model <strong>XGBoost</strong>. En af de ting som
+er krævende ved denne model er den har en masse parameter, som kræver tuning.</p>
+<pre class="r"><code>vb_matches &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-19/vb_matches.csv&quot;, guess_max = 76000)
+
+vb_matches</code></pre>
+<pre><code>## # A tibble: 76,756 x 65
+##    circuit tournament country  year date       gender match_num w_player1
+##    &lt;chr&gt;   &lt;chr&gt;      &lt;chr&gt;   &lt;dbl&gt; &lt;date&gt;     &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    
+##  1 AVP     Huntingto~ United~  2002 2002-05-24 M              1 Kevin Wo~
+##  2 AVP     Huntingto~ United~  2002 2002-05-24 M              2 Brad Tor~
+##  3 AVP     Huntingto~ United~  2002 2002-05-24 M              3 Eduardo ~
+##  4 AVP     Huntingto~ United~  2002 2002-05-24 M              4 Brent Do~
+##  5 AVP     Huntingto~ United~  2002 2002-05-24 M              5 Albert H~
+##  6 AVP     Huntingto~ United~  2002 2002-05-24 M              6 Jason Ri~
+##  7 AVP     Huntingto~ United~  2002 2002-05-24 M              7 Aaron Bo~
+##  8 AVP     Huntingto~ United~  2002 2002-05-24 M              8 Canyon C~
+##  9 AVP     Huntingto~ United~  2002 2002-05-24 M              9 Dax Hold~
+## 10 AVP     Huntingto~ United~  2002 2002-05-24 M             10 Mark Wil~
+## # ... with 76,746 more rows, and 57 more variables: w_p1_birthdate &lt;date&gt;,
+## #   w_p1_age &lt;dbl&gt;, w_p1_hgt &lt;dbl&gt;, w_p1_country &lt;chr&gt;, w_player2 &lt;chr&gt;,
+## #   w_p2_birthdate &lt;date&gt;, w_p2_age &lt;dbl&gt;, w_p2_hgt &lt;dbl&gt;, w_p2_country &lt;chr&gt;,
+## #   w_rank &lt;chr&gt;, l_player1 &lt;chr&gt;, l_p1_birthdate &lt;date&gt;, l_p1_age &lt;dbl&gt;,
+## #   l_p1_hgt &lt;dbl&gt;, l_p1_country &lt;chr&gt;, l_player2 &lt;chr&gt;, l_p2_birthdate &lt;date&gt;,
+## #   l_p2_age &lt;dbl&gt;, l_p2_hgt &lt;dbl&gt;, l_p2_country &lt;chr&gt;, l_rank &lt;chr&gt;,
+## #   score &lt;chr&gt;, duration &lt;time&gt;, bracket &lt;chr&gt;, round &lt;chr&gt;,
+## #   w_p1_tot_attacks &lt;dbl&gt;, w_p1_tot_kills &lt;dbl&gt;, w_p1_tot_errors &lt;dbl&gt;,
+## #   w_p1_tot_hitpct &lt;dbl&gt;, w_p1_tot_aces &lt;dbl&gt;, w_p1_tot_serve_errors &lt;dbl&gt;,
+## #   w_p1_tot_blocks &lt;dbl&gt;, w_p1_tot_digs &lt;dbl&gt;, w_p2_tot_attacks &lt;dbl&gt;,
+## #   w_p2_tot_kills &lt;dbl&gt;, w_p2_tot_errors &lt;dbl&gt;, w_p2_tot_hitpct &lt;dbl&gt;,
+## #   w_p2_tot_aces &lt;dbl&gt;, w_p2_tot_serve_errors &lt;dbl&gt;, w_p2_tot_blocks &lt;dbl&gt;,
+## #   w_p2_tot_digs &lt;dbl&gt;, l_p1_tot_attacks &lt;dbl&gt;, l_p1_tot_kills &lt;dbl&gt;,
+## #   l_p1_tot_errors &lt;dbl&gt;, l_p1_tot_hitpct &lt;dbl&gt;, l_p1_tot_aces &lt;dbl&gt;,
+## #   l_p1_tot_serve_errors &lt;dbl&gt;, l_p1_tot_blocks &lt;dbl&gt;, l_p1_tot_digs &lt;dbl&gt;,
+## #   l_p2_tot_attacks &lt;dbl&gt;, l_p2_tot_kills &lt;dbl&gt;, l_p2_tot_errors &lt;dbl&gt;,
+## #   l_p2_tot_hitpct &lt;dbl&gt;, l_p2_tot_aces &lt;dbl&gt;, l_p2_tot_serve_errors &lt;dbl&gt;,
+## #   l_p2_tot_blocks &lt;dbl&gt;, l_p2_tot_digs &lt;dbl&gt;</code></pre>
+<p>Data indeholder <em>match stat</em> som; error, kills etc.. De oplysninger skal vi bruge i vores model. For at finde frem til det
+kræves der noget feature engineering, hvor vi skal beregne dem for vinder og taberne.
+Der er nogle <code>NA</code> værdier som vi undlader at medtage i vores data.</p>
+<pre class="r"><code>vb_parsed &lt;- vb_matches %&gt;%
+  transmute(
+    circuit,
+    gender,
+    year,
+    # vil to hold team med større sandynlihghed veinde for nogle fejl eller sttacks
+    w_attacks = w_p1_tot_attacks + w_p2_tot_attacks,
+    w_kills = w_p1_tot_kills + w_p2_tot_kills,
+    w_errors = w_p1_tot_errors + w_p2_tot_errors,
+    w_aces = w_p1_tot_aces + w_p2_tot_aces,
+    w_serve_errors = w_p1_tot_serve_errors + w_p2_tot_serve_errors,
+    w_blocks = w_p1_tot_blocks + w_p2_tot_blocks,
+    w_digs = w_p1_tot_digs + w_p2_tot_digs,
+    l_attacks = l_p1_tot_attacks + l_p2_tot_attacks,
+    l_kills = l_p1_tot_kills + l_p2_tot_kills,
+    l_errors = l_p1_tot_errors + l_p2_tot_errors,
+    l_aces = l_p1_tot_aces + l_p2_tot_aces,
+    l_serve_errors = l_p1_tot_serve_errors + l_p2_tot_serve_errors,
+    l_blocks = l_p1_tot_blocks + l_p2_tot_blocks,
+    l_digs = l_p1_tot_digs + l_p2_tot_digs
+  ) %&gt;%
+  na.omit()
+library(dplyr, warn.conflicts = FALSE)
+
+winner &lt;- vb_parsed %&gt;%
+  select(
+    circuit, gender, year,
+    w_attacks:w_digs
+  ) %&gt;%
+  rename_all(function(x) gsub(&quot;w_&quot;, &quot;&quot;, x)) %&gt;%
+  mutate(win = &quot;win&quot;)
+
+losers &lt;- vb_parsed %&gt;%
+  select(
+    circuit, gender, year,
+    l_attacks:l_digs
+  ) %&gt;%
+  rename_all(function(x) gsub(&quot;l_&quot;, &quot;&quot;, x)) %&gt;%
+  mutate(win = &quot;lose&quot;)
+
+vb_df &lt;- bind_rows(
+  winner,
+  losers
+) %&gt;%
+  mutate_if(is.character, factor)
+
+vb_df %&gt;% count(gender)</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   gender     n
+##   &lt;fct&gt;  &lt;int&gt;
+## 1 M      14364
+## 2 W      14300</code></pre>
+<p>I de tidligere år hold de ikke øje med det. Derfor kan vi slette na.
+Der ryger en del observationer, men det er stadig nok til vi kan lave voresa model.
+Vi vil have en række for hver udkom.</p>
+<p>Desuden bygger vi en to data frames med vinder og taber.</p>
+<p>Nu vil vi se yderligere undersøgelse.</p>
+<pre class="r"><code>library(tidyquant)
+
+vb_df %&gt;%
+  pivot_longer(attacks:digs, names_to = &quot;stat&quot;, values_to = &quot;value&quot;) %&gt;%
+  ggplot(aes(gender, value, fill = win, color = win)) +
+  geom_boxplot(alpha = 0.4) +
+  facet_wrap(~stat, scales = &quot;free_y&quot;, nrow = 2) +
+  labs(y = NULL, color = NULL, fill = NULL)</code></pre>
+<p><img src="/post/2020-05-22-xgboost-med-tidymodels_files/figure-html/unnamed-chunk-3-1.png" width="2400" /></p>
+<p>Vi har delt ud på mænd og kvinder. Der er nogle ting som er meget lig hvad vi ville
+forvente. Dog e serve_error ikke den store betydning. Error har en stor betydning.
+Attacks ser ud at der ingen forskel er. Der er 300, men gad vide om det er en fejl eller?</p>
+</div>
+<div id="byg-modellen" class="section level2">
+<h2>Byg modellen</h2>
+<p>Det første vi vil gøre er at splitte vores data op i træning og testing.</p>
+<pre class="r"><code>set.seed(123)
+# Split data
+vb_split &lt;- initial_split(vb_df, strata = win)
+vb_train &lt;- training(vb_split)
+vb_test &lt;- testing(vb_split)</code></pre>
+<p>En fordel (ud over at være en mere præcis model) ved xgboost er den ikke kræver meget
+preprocessing, og vi skal ikke bekymre sig om faktor, centering eller skalering af vores data.
+Ulempen er vi skal tune mange parameter.</p>
+<pre class="r"><code>xgb_spec &lt;- boost_tree(
+  # skal håndtere en masse model parameter vi skal tune
+  # vi tuner ikke træet men sørger for der er nok af dem.
+  trees = 1000,
+  # hyper parameter
+  # de handler om model kompleksitet.
+  tree_depth = tune(), min_n = tune(), loss_reduction = tune(),
+  sample = tune(), mtry = tune(),
+  learn_rate = tune()
+) %&gt;%
+  set_engine(&quot;xgboost&quot;) %&gt;%
+  set_mode(&quot;classification&quot;)
+
+xgb_spec</code></pre>
+<pre><code>## Boosted Tree Model Specification (classification)
+## 
+## Main Arguments:
+##   mtry = tune()
+##   trees = 1000
+##   min_n = tune()
+##   tree_depth = tune()
+##   learn_rate = tune()
+##   loss_reduction = tune()
+##   sample_size = tune()
+## 
+## Computational engine: xgboost</code></pre>
+<p>Nu er det sat op, men vi skal sætte mulige parameter. Her vil jeg bruge et <code>space-filling</code> design så vi kan
+afdække hyperparameterne.</p>
+<pre class="r"><code>xgb_grid &lt;- grid_latin_hypercube(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  # sample størrelsen  er en andel
+  sample_size = sample_prop(),
+  # har en ukendt, ds vi ved  ikke hvor mange data punkter.
+  #
+  finalize(mtry(), vb_train),
+  learn_rate(),
+  size = 20
+)
+xgb_grid</code></pre>
+<pre><code>## # A tibble: 20 x 6
+##    tree_depth min_n loss_reduction sample_size  mtry learn_rate
+##         &lt;int&gt; &lt;int&gt;          &lt;dbl&gt;       &lt;dbl&gt; &lt;int&gt;      &lt;dbl&gt;
+##  1          6     7       1.85e- 5       0.125    10   2.34e- 4
+##  2          7    25       5.43e- 7       0.922     3   1.45e- 5
+##  3         13    19       9.87e- 2       0.537     4   4.11e- 7
+##  4         11    39       2.57e- 1       0.303     7   6.58e- 3
+##  5         13    11       9.46e- 3       0.561     5   6.87e- 6
+##  6          9    30       2.34e+ 1       0.354     4   4.37e- 3
+##  7         15     6       7.46e+ 0       0.617     7   1.35e- 4
+##  8          4    36       4.93e- 4       0.663     5   5.36e- 5
+##  9          9    27       3.31e- 6       0.170     9   1.23e- 3
+## 10          2    15       9.23e- 9       0.979     1   1.56e- 6
+## 11         10    33       1.12e- 7       0.859     8   1.19e- 8
+## 12          5    19       2.91e- 9       0.449     2   2.69e- 8
+## 13         12    37       1.14e+ 0       0.897    11   1.81e-10
+## 14          2     3       2.33e- 2       0.747     3   1.22e- 7
+## 15         10    21       4.50e-10       0.817     2   1.15e- 9
+## 16          1     9       3.99e- 8       0.190     8   3.02e- 7
+## 17          4    13       1.94e- 3       0.468     6   2.89e- 9
+## 18          5    31       1.67e- 4       0.379     9   4.96e-10
+## 19          8    15       1.02e-10       0.713    10   4.86e- 2
+## 20         14    28       4.07e- 6       0.274     6   1.62e- 2</code></pre>
+<p>Læg mærke til at vi behandler <code>mtry()</code> anderledes fordi den afhænger af de faktiske
+antal predictors i data.</p>
+<p>Med tidymodels er der kommet den specielle funktion workflow som skaber et dynamik for en.
+Da vi ikke har noget data prepocession så kan vi bruge <code>àdd_formula()</code>.</p>
+<pre class="r"><code>xgb_wf &lt;- workflow() %&gt;%
+  add_formula(win ~ .) %&gt;%
+  add_model(xgb_spec)
+xgb_wf</code></pre>
+<pre><code>## == Workflow =======================================================================================================================================================================================
+## Preprocessor: Formula
+## Model: boost_tree()
+## 
+## -- Preprocessor -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## win ~ .
+## 
+## -- Model ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## Boosted Tree Model Specification (classification)
+## 
+## Main Arguments:
+##   mtry = tune()
+##   trees = 1000
+##   min_n = tune()
+##   tree_depth = tune()
+##   learn_rate = tune()
+##   loss_reduction = tune()
+##   sample_size = tune()
+## 
+## Computational engine: xgboost</code></pre>
+<p>Hernæst laver vi en <strong>cross-validation</strong> resample for at tune vores model.</p>
+<pre class="r"><code>set.seed(123)
+
+vb_folds &lt;- vfold_cv(vb_train, strata = win)
+vb_folds</code></pre>
+<pre><code>## #  10-fold cross-validation using stratification 
+## # A tibble: 10 x 2
+##    splits               id    
+##    &lt;named list&gt;         &lt;chr&gt; 
+##  1 &lt;split [19.3K/2.1K]&gt; Fold01
+##  2 &lt;split [19.3K/2.1K]&gt; Fold02
+##  3 &lt;split [19.3K/2.1K]&gt; Fold03
+##  4 &lt;split [19.3K/2.1K]&gt; Fold04
+##  5 &lt;split [19.3K/2.1K]&gt; Fold05
+##  6 &lt;split [19.3K/2.1K]&gt; Fold06
+##  7 &lt;split [19.3K/2.1K]&gt; Fold07
+##  8 &lt;split [19.3K/2.1K]&gt; Fold08
+##  9 &lt;split [19.3K/2.1K]&gt; Fold09
+## 10 &lt;split [19.4K/2.1K]&gt; Fold10</code></pre>
+<p>Nu kan vi begynde at tune vores model.</p>
+<pre class="r"><code>doParallel::registerDoParallel()
+
+set.seed(234)
+xgb_res &lt;- tune_grid(
+  xgb_wf,
+  resamples = vb_folds,
+  grid = xgb_grid,
+  control = control_grid(save_pred = TRUE)
+)
+
+xgb_res</code></pre>
+<pre><code>## #  10-fold cross-validation using stratification 
+## # A tibble: 10 x 5
+##    splits             id     .metrics        .notes         .predictions        
+##    &lt;list&gt;             &lt;chr&gt;  &lt;list&gt;          &lt;list&gt;         &lt;list&gt;              
+##  1 &lt;split [19.3K/2.1~ Fold01 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [43,000 x 1~
+##  2 &lt;split [19.3K/2.1~ Fold02 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [43,000 x 1~
+##  3 &lt;split [19.3K/2.1~ Fold03 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [43,000 x 1~
+##  4 &lt;split [19.3K/2.1~ Fold04 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [43,000 x 1~
+##  5 &lt;split [19.3K/2.1~ Fold05 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [43,000 x 1~
+##  6 &lt;split [19.3K/2.1~ Fold06 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [43,000 x 1~
+##  7 &lt;split [19.3K/2.1~ Fold07 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [43,000 x 1~
+##  8 &lt;split [19.3K/2.1~ Fold08 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [43,000 x 1~
+##  9 &lt;split [19.3K/2.1~ Fold09 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [43,000 x 1~
+## 10 &lt;split [19.4K/2.1~ Fold10 &lt;tibble [40 x ~ &lt;tibble [0 x ~ &lt;tibble [42,960 x 1~</code></pre>
+</div>
+<div id="undersøg-resultater" class="section level2">
+<h2>Undersøg resultater</h2>
+<p>Vi kan undersøge metricerne for alle disse modeller.</p>
+<pre class="r"><code>xgb_res %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 40 x 11
+##     mtry min_n tree_depth learn_rate loss_reduction sample_size .metric
+##    &lt;int&gt; &lt;int&gt;      &lt;int&gt;      &lt;dbl&gt;          &lt;dbl&gt;       &lt;dbl&gt; &lt;chr&gt;  
+##  1     1    15          2    1.56e-6 0.00000000923        0.979 accura~
+##  2     1    15          2    1.56e-6 0.00000000923        0.979 roc_auc
+##  3     2    19          5    2.69e-8 0.00000000291        0.449 accura~
+##  4     2    19          5    2.69e-8 0.00000000291        0.449 roc_auc
+##  5     2    21         10    1.15e-9 0.000000000450       0.817 accura~
+##  6     2    21         10    1.15e-9 0.000000000450       0.817 roc_auc
+##  7     3     3          2    1.22e-7 0.0233               0.747 accura~
+##  8     3     3          2    1.22e-7 0.0233               0.747 roc_auc
+##  9     3    25          7    1.45e-5 0.000000543          0.922 accura~
+## 10     3    25          7    1.45e-5 0.000000543          0.922 roc_auc
+## # ... with 30 more rows, and 4 more variables: .estimator &lt;chr&gt;, mean &lt;dbl&gt;,
+## #   n &lt;int&gt;, std_err &lt;dbl&gt;</code></pre>
+<p>Vi kan her se prøcision og real under kurven (ROC).</p>
+<pre class="r"><code>xgb_res %&gt;%
+  collect_metrics() %&gt;%
+  filter(.metric == &quot;roc_auc&quot;) %&gt;%
+  select(mean, mtry:sample_size) %&gt;%
+  pivot_longer(mtry:sample_size,
+    names_to = &quot;parameter&quot;,
+    values_to = &quot;value&quot;
+  ) %&gt;%
+  ggplot(aes(value, mean, color = parameter)) +
+  geom_point(show.legend = FALSE) +
+  facet_wrap(~parameter, scales = &quot;free_x&quot;)</code></pre>
+<p><img src="/post/2020-05-22-xgboost-med-tidymodels_files/figure-html/unnamed-chunk-11-1.png" width="2400" /></p>
+<p>Husk her at vi brugte et <strong>space-filling</strong> design for parameterne. Det ser ud at højere
+værdier for træet dybde er bedre, men på den anden side så tager jeg med at der er mange
+kombinationer af parameter der er gode og give et præcis resultat.</p>
+<pre class="r"><code>show_best(xgb_res, &quot;roc_auc&quot;)</code></pre>
+<pre><code>## # A tibble: 5 x 11
+##    mtry min_n tree_depth learn_rate loss_reduction sample_size .metric
+##   &lt;int&gt; &lt;int&gt;      &lt;int&gt;      &lt;dbl&gt;          &lt;dbl&gt;       &lt;dbl&gt; &lt;chr&gt;  
+## 1     6    28         14 0.0162     0.00000407           0.274 roc_auc
+## 2     7    39         11 0.00658    0.257                0.303 roc_auc
+## 3    10    15          8 0.0486     0.000000000102       0.713 roc_auc
+## 4     7     6         15 0.000135   7.46                 0.617 roc_auc
+## 5     5    11         13 0.00000687 0.00946              0.561 roc_auc
+## # ... with 4 more variables: .estimator &lt;chr&gt;, mean &lt;dbl&gt;, n &lt;int&gt;,
+## #   std_err &lt;dbl&gt;</code></pre>
+<pre class="r"><code>best_auv &lt;- select_best(xgb_res, &quot;roc_auc&quot;)
+
+best_auv</code></pre>
+<pre><code>## # A tibble: 1 x 6
+##    mtry min_n tree_depth learn_rate loss_reduction sample_size
+##   &lt;int&gt; &lt;int&gt;      &lt;int&gt;      &lt;dbl&gt;          &lt;dbl&gt;       &lt;dbl&gt;
+## 1     6    28         14     0.0162     0.00000407       0.274</code></pre>
+<pre class="r"><code>final_xgb &lt;- finalize_workflow(xgb_wf, best_auv)
+final_xgb</code></pre>
+<pre><code>## == Workflow =======================================================================================================================================================================================
+## Preprocessor: Formula
+## Model: boost_tree()
+## 
+## -- Preprocessor -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## win ~ .
+## 
+## -- Model ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## Boosted Tree Model Specification (classification)
+## 
+## Main Arguments:
+##   mtry = 6
+##   trees = 1000
+##   min_n = 28
+##   tree_depth = 14
+##   learn_rate = 0.016199890154566
+##   loss_reduction = 4.07341934175922e-06
+##   sample_size = 0.27370679514017
+## 
+## Computational engine: xgboost</code></pre>
+<pre class="r"><code>library(vip)
+
+final_xgb %&gt;%
+  fit(data = vb_train) %&gt;%
+  pull_workflow_fit() %&gt;%
+  vip(geom = &quot;point&quot;)</code></pre>
+<p><img src="/post/2020-05-22-xgboost-med-tidymodels_files/figure-html/unnamed-chunk-13-1.png" width="2400" /></p>
+<p>Ud fra plottet ser vi at de vigtigs precidtor for at vinde en kamp er antal kills, errors og attacks.
+Køn har ingen betydning.</p>
+<p>Nu er det på tide at vende tilbage til vores testing sæt. Her bruger vi <code>last_fit()</code> til at fitte vores model
+en sidste gang på vores træning data og evaluate vores model en sidste ang på vores testing sæt.</p>
+<pre class="r"><code>final_res &lt;- last_fit(final_xgb, vb_split)
+final_res %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 2 x 3
+##   .metric  .estimator .estimate
+##   &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;
+## 1 accuracy binary         0.844
+## 2 roc_auc  binary         0.928</code></pre>
+<p>Det ligner ikke vi overfitter vores model.</p>
+<pre class="r"><code>final_res %&gt;%
+  collect_predictions() %&gt;%
+  conf_mat(win, .pred_class)</code></pre>
+<pre><code>##           Truth
+## Prediction lose  win
+##       lose 2969  515
+##       win   614 3068</code></pre>
+<p>Vi kan også lave en <strong>ROC kurve</strong> for vores testing sæt.</p>
+<pre class="r"><code>final_res %&gt;%
+  collect_predictions() %&gt;%
+  roc_curve(win, .pred_win) %&gt;%
+  ggplot(aes(x = 1 - specificity, y = sensitivity)) +
+  geom_line(size = 1.5, color = &quot;midnightblue&quot;) +
+  geom_abline(
+    lty = 2, alpha = 0.5,
+    color = &quot;gray50&quot;,
+    size = 1.2
+  )</code></pre>
+<p><img src="/post/2020-05-22-xgboost-med-tidymodels_files/figure-html/unnamed-chunk-16-1.png" width="2400" /></p>
+<p>De er forussigelse på testing data. Vi kan se fra vores plot hvordan modellen klare sig.</p>
+</div>
+<div id="apendix" class="section level2">
+<h2>Apendix</h2>
+<p>Jeg har leget med et andet plot.</p>
+<pre class="r"><code>vb_matches %&gt;%
+  # put all player countries into one column named &quot;player_country&quot;
+  gather(c(
+    w_p1_country, w_p2_country,
+    l_p1_country, l_p2_country
+  ),
+  key = &quot;player&quot;,
+  value = &quot;player_country&quot;
+  ) %&gt;%
+  # group by the country columns
+  group_by(country, player_country) %&gt;%
+  # count number of combos per country:player_country
+  count() %&gt;%
+  # clean up variable
+  drop_na() %&gt;% ungroup() %&gt;%
+  # define scale so the outlier isn&#39;t too obnoxious
+  mutate(ncolors = cut(n,
+    breaks = c(0, 10, 25, 50, 75, 100, 125, 150, 175, 200, 1000, 25000, 50000, max(n)),
+    labels = c(10, 25, 50, 75, 100, 125, 150, 175, 200, 1000, 25000, 50000, max(n))
+  )) %&gt;%
+  # Plotting
+  ggplot(aes(
+    y = reorder(country, -n),
+    x = reorder(player_country, -n),
+    size = ncolors,
+    color = ncolors
+  )) +
+  geom_point(alpha = 0.8) +
+  scale_colour_viridis_d(option = &quot;plasma&quot;) +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    axis.text = element_text(size = 8),
+    legend.position = &quot;right&quot;,
+    plot.background = element_rect(fill = &quot;bisque&quot;),
+    legend.background = element_blank(), panel.background = element_blank(), legend.key = element_blank()
+  ) +
+  labs(
+    x = &quot;Player countries&quot;, y = &quot;Match location&quot;,
+    color = &quot;Number of \ncombinations&quot;, size = &quot;Number of \ncombinations&quot;,
+    caption = &quot;Plot by @LucasBagge \n Source: BigTimeStats&quot;,
+    title = &quot;Where do beach volleyball players come from and where do they play?&quot;,
+    subtitle = &quot;The most common combo is from the USA, playing in the USA&quot;
+  )</code></pre>
+<p><img src="/post/2020-05-22-xgboost-med-tidymodels_files/figure-html/unnamed-chunk-17-1.png" width="2400" /></p>
+</div>

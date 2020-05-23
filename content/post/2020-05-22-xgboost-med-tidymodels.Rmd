@@ -46,7 +46,7 @@ er krævende ved denne model er den har en masse parameter, som  kræver tuning.
 ```{r}
 vb_matches <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-19/vb_matches.csv', guess_max = 76000)
 
-vb_matches %>% kable()
+vb_matches 
 ```
 
 Data indeholder *match stat* som; error, kills etc.. De oplysninger skal vi bruge i vores model. For at finde frem til det 
@@ -170,8 +170,7 @@ xgb_grid <- grid_latin_hypercube(
   learn_rate(),
   size = 20 
 )
-xgb_grid %>% 
-  kable()
+xgb_grid
 
 ```
 
@@ -210,7 +209,7 @@ xgb_res <- tune_grid(
   control = control_grid(save_pred = TRUE)
 )
 
-xgb_res %>% kable()
+xgb_res 
 ```
 
 ## Undersøg resultater
@@ -218,8 +217,7 @@ xgb_res %>% kable()
 Vi kan undersøge metricerne for alle disse modeller.
 ```{r}
 xgb_res %>% 
-  collect_metrics() %>% 
-  kable()
+  collect_metrics() 
 ```
 
 Vi kan her se prøcision og real under kurven (ROC).
@@ -242,12 +240,11 @@ værdier for træet dybde er bedre, men på den anden side så tager jeg med at 
 kombinationer af parameter der er gode og give et præcis resultat. 
 
 ```{r}
-show_best(xgb_res, "roc_auc") %>% 
-  kable()
+show_best(xgb_res, "roc_auc")
 
 best_auv <- select_best(xgb_res, "roc_auc")
 
-best_auv %>% kable()
+best_auv 
 
 final_xgb <- finalize_workflow(xgb_wf, best_auv)
 final_xgb
@@ -272,7 +269,7 @@ en sidste gang på vores træning data og evaluate vores model en sidste ang på
 ```{r}
 final_res <- last_fit(final_xgb, vb_split)
 final_res %>% 
-  collect_metrics %>% kable()
+  collect_metrics 
 ```
 
 Det ligner ikke vi overfitter vores model.
@@ -300,3 +297,42 @@ final_res %>%
   
 De er forussigelse på testing data. Vi kan se fra vores plot hvordan modellen klare sig.
  
+## Apendix
+
+Jeg har leget med et andet plot.
+
+```{r}
+vb_matches %>%
+  # put all player countries into one column named "player_country"
+  gather(c(w_p1_country, w_p2_country, 
+           l_p1_country, l_p2_country),
+         key="player", 
+         value="player_country") %>%
+  # group by the country columns
+  group_by(country, player_country)  %>%
+  # count number of combos per country:player_country
+  count() %>% 
+  # clean up variable
+  drop_na() %>% ungroup() %>%
+  # define scale so the outlier isn't too obnoxious
+  mutate(ncolors=cut(n, breaks=c(0,10,25,50,75,100,125,150,175,200,1000,25000,50000,max(n)),
+                      labels=c(10,25,50,75,100,125,150,175,200,1000,25000,50000,max(n)))) %>%
+  # Plotting
+  ggplot(aes(y=reorder(country,-n), 
+           x=reorder(player_country,-n),
+           size=ncolors, 
+           color=ncolors))+
+  geom_point(alpha=0.8)+
+  scale_colour_viridis_d(option = "plasma") +
+  theme(axis.text.x=element_text(angle=90, hjust=1),
+        axis.text = element_text(size=8),
+        legend.position="right",
+        plot.background = element_rect(fill="bisque"),
+        legend.background = element_blank(),panel.background = element_blank(),legend.key=element_blank())+
+  labs(x="Player countries", y="Match location", 
+       color="Number of \ncombinations",size="Number of \ncombinations",
+       caption = "Plot by @LucasBagge \n Source: BigTimeStats",
+       title = "Where do beach volleyball players come from and where do they play?",
+       subtitle = "The most common combo is from the USA, playing in the USA")
+```
+
