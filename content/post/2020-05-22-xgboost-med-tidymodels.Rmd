@@ -8,8 +8,9 @@ categories:
   - xgboost
 tags:
   - xgboost
-subtitle: ''
-summary: ''
+subtitle: 'XGBoost i tidymodels'
+summary: 'Tidymodels værktøjet er en fantastiak bidrag til modellering. I denne post vil jeg tage et volleyball data og
+finde ud af gennem en avanceret XGBoost klassificeringsmodel, om vi kan forudsige hvem der vil vinde.'
 authors: []
 lastmod: '2020-05-22T14:42:57+02:00'
 featured: no
@@ -34,30 +35,23 @@ library(magrittr)
 theme_set(theme_minimal())
 ```
 
-Der er ikke meget data pre-processiong når vi bruger **XGBoost**. Dog skal vi bruge
-megeet tid på at tune vores **hyperparameter**.
-
-VI vil i denne opslag se på om et beach volley hold vil vinde eller tabe. 
-
 ## Explore data
+
+Målet for dette opslag er at forudsige om et beach volleyball hold af to vandt deres spil
+baseret på *game play stat*; errors, blocks, attacks. etc. Da der er er meget data, kan
+vi benytte os af en mere avanceret machine larning model **XGBoost**. En af de ting som
+er krævende ved denne model er den har en masse parameter, som  kræver tuning. 
+
 
 ```{r}
 vb_matches <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-19/vb_matches.csv', guess_max = 76000)
 
-vb_matches
+vb_matches %>% kable()
 ```
 
-Der er en masse data. Detr er godt når vi skal forsøge at tune vores model. 
-Det er strukturel data, men vi skal lave noget reshape for at gøre det klar.
-
-Vi har inforamtion om volleybold cirkel og navnet om det e rmænd eller kvninder.
-VI har også for dem som har vundet og de som har tabt. Der er også om det er par
-eller i flere hold. 
-
-Jeg vil gerne have af vide hvad der sker andre kamepen, aå det er sttacks. Her vil vi så
-træne en model der forudsige vind eller tab på de tags. 
-
-Vi har en række per match som vi vil ændre
+Data indeholder *match stat* som; error, kills etc.. De oplysninger skal vi bruge i vores model. For at finde frem til det 
+kræves der noget feature engineering, hvor vi skal beregne dem for vinder og taberne. 
+Der er nogle `NA` værdier som vi undlader at medtage i vores data.
 
 ```{r}
 vb_parsed <- vb_matches %>% 
@@ -129,6 +123,8 @@ Attacks ser ud at der ingen forskel er. Der er 300, men gad vide om det er en fe
 
 ## Byg modellen
 
+Det første vi vil gøre er at splitte vores data op i træning og testing.
+
 ```{r}
 set.seed(123)
 # Split data
@@ -137,10 +133,9 @@ vb_train <- training(vb_split)
 vb_test <- testing(vb_split)
 ```
 
-Sæt nu på model specifikationerne.
-
-- XGBoost modeller er baseret på træer. **Decision tree** kan klare alt data,
-det skal ikke være faktor ller numerisk.  
+En fordel (ud over at være en mere præcis model) ved xgboost er den ikke kræver meget
+preprocessing, og vi skal ikke bekymre sig om faktor, centering eller skalering af vores data.
+Ulempen er vi skal tune mange parameter. 
 
 ```{r}
 xgb_spec <- boost_tree(
@@ -159,15 +154,8 @@ xgb_spec <- boost_tree(
 xgb_spec
 ```
 
-Det er en model spec. Vi har det klar og nu skal vi sætte op hvilke værdier vi vil prøve.
-
-Her kan man regular bread `grid_regular` så vi finder den bedste kombination.
-Det vil tage lang tid. 
-
-En anden metode er `grid_max_entropy` som dækker paramter spave og udfylder
-den med 6 dimensioner som vi har valgt i vores model spec. 
-
-Så er to som jeg har nævnt. 
+Nu er det sat op, men vi skal sætte mulige parameter. Her vil jeg bruge et `space-filling` design så vi kan
+afdække hyperparameterne.
 
 ```{r}
 xgb_grid <- grid_latin_hypercube(
@@ -182,11 +170,16 @@ xgb_grid <- grid_latin_hypercube(
   learn_rate(),
   size = 20 
 )
-xgb_grid
+xgb_grid %>% 
+  kable()
+
 ```
 
-Vi bestluttede hvad hyper paramter skulle være og her foroven har
-vi mulige. Der er 20 modeller og vi ser hvilken der er bedst.
+Læg mærke til at vi behandler `mtry()` anderledes fordi den afhænger af de faktiske
+antal predictors i data. 
+
+Med tidymodels er der kommet den specielle funktion workflow som skaber et dynamik for en. 
+Da vi ikke har noget data prepocession så kan vi bruge `àdd_formula()`.
 
 ```{r}
 xgb_wf <- workflow() %>% 
@@ -195,10 +188,7 @@ xgb_wf <- workflow() %>%
 xgb_wf
 ```
 
-Pre processer er det går gennem nogle skrdit for hvad der skal til før 
-det er færdig.
-
-Nu skal vi tune vores model
+Hernæst laver vi en **cross-validation** resample for at tune vores model. 
 
 ```{r}
 set.seed(123)
@@ -207,8 +197,7 @@ vb_folds <- vfold_cv(vb_train, strata = win)
 vb_folds
 ```
 
-Det er en 10 fold cross validation.  så det er vores plit og det data er 
-klar vi kan gøre med
+Nu kan vi begynde at tune vores model.
 
 ```{r}
 doParallel::registerDoParallel()
@@ -221,20 +210,19 @@ xgb_res <- tune_grid(
   control = control_grid(save_pred = TRUE)
 )
 
-xgb_res
+xgb_res %>% kable()
 ```
-
-Det tager lidt tid.
 
 ## Undersøg resultater
 
+Vi kan undersøge metricerne for alle disse modeller.
 ```{r}
 xgb_res %>% 
-  collect_metrics()
+  collect_metrics() %>% 
+  kable()
 ```
 
-Vi kan her se prøcision og real under kurven (ROC)
-
+Vi kan her se prøcision og real under kurven (ROC).
 
 ```{r}
 xgb_res %>% 
@@ -249,7 +237,9 @@ xgb_res %>%
   facet_wrap(~ parameter, scales = "free_x")
 ```
 
-Det vi har på x aksen er arealet under kurven. tree depht går ned og meget op. Er der nogle som er klart bedre? 
+Husk her at vi brugte et **space-filling** design for parameterne. Det ser ud at højere
+værdier for træet dybde er bedre, men på den anden side så tager jeg med at der er mange
+kombinationer af parameter der er gode og give et præcis resultat. 
 
 ```{r}
 show_best(xgb_res, "roc_auc") %>% 
@@ -262,9 +252,6 @@ best_auv %>% kable()
 final_xgb <- finalize_workflow(xgb_wf, best_auv)
 final_xgb
 ```
-Der er stor forskel i parameterne.   
-
-Vi har valgt den bedste mode. 
 
 ```{r}
 library(vip)
@@ -275,21 +262,28 @@ pull_workflow_fit() %>%
   vip(geom = "point")
 ```
 
-Med ovenstående graf kan vi se hvilke dele der bidrage til klassificering. Kills og errors er vigtigste i om man vinder en kamp.
+Ud fra plottet ser vi at de vigtigs precidtor for at vinde en kamp er antal kills, errors og attacks.
+Køn har ingen betydning.
+
+Nu er det på tide at vende tilbage til vores testing sæt. Her bruger vi `last_fit()` til at fitte vores model
+en sidste gang på vores træning data og evaluate vores model en sidste ang på vores testing sæt. 
+
 
 ```{r}
 final_res <- last_fit(final_xgb, vb_split)
 final_res %>% 
-  collect_metrics
+  collect_metrics %>% kable()
 ```
 
-Vi overfitter ikke. 
+Det ligner ikke vi overfitter vores model.
 
 ```{r}
 final_res %>% 
   collect_predictions() %>% 
   conf_mat(win, .pred_class)
 ```
+ 
+ Vi kan også lave en **ROC kurve** for vores testing sæt. 
  
 ```{r}
 final_res %>%
