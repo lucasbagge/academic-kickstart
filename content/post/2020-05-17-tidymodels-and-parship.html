@@ -1,8 +1,8 @@
 ---
-title: Tidymodels and parship
+title: Tidymodels, Random Forest og parsnip  
 author: Lucas Bagge
 date: '2020-05-17'
-slug: tidymodels-and-parship
+slug: tidymodels-and-parsnip
 categories:
   - logistic regression
   - random forest
@@ -12,7 +12,7 @@ tags:
   - tidymodels
   - ML
   - parship
-  - 
+  - random forest
 subtitle: ''
 summary: ''
 authors: []
@@ -29,34 +29,52 @@ projects: []
 
 <div id="introduktion" class="section level2">
 <h2>Introduktion</h2>
-<p>Denne post kigger på to modeller.
-Den logistiske regression og random forest, hvor de begge bliver brugt som klassifikations modeller.</p>
-<p>Jeg kommer til at gennemgå og beskrive random forst da det er en model, som er forholdsvis ny for mig og der er nogle teoretiske framwork jeg gerne vil prøve at forklare.</p>
-<p>Desuden kommer vi til at stifte bekendtskab med <code>parsnip</code> som gør det let at skifte om til de forskellige modeller. Med det nye framwork fra
-<code>tidymodels</code> kan man skifte utrolig let fra <code>glm</code> til en <strong>cross validated</strong> random forest med <code>ranger</code>
+<p>Denne post jeg på kigger på to modeller.
+Den <strong>logistiske regression</strong> og <strong>random forest</strong>, hvor de begge bliver brugt
+som klassifikations modeller.</p>
+<p>Jeg kommer til at gennemgå og beskrive random forst da det er en model,
+som er forholdsvis ny for mig og der er nogle teoretiske framwork jeg gerne
+vil prøve at forklare.</p>
+<p>Desuden kommer vi til at stifte bekendtskab med <code>parsnip</code> som gør det let at
+skifte om til de forskellige modeller. Med det nye framwork fra
+<code>tidymodels</code> kan man skifte utrolig let fra <code>glm</code> til en <strong>cross validated</strong>
+random forest med <code>ranger</code>
 med få linjers koder.</p>
 </div>
 <div id="random-forest" class="section level2">
 <h2>Random forest</h2>
-<p>Det er en af de mest populære machine learning algoritmer og kan både bruges som regresssion og klassifikation.</p>
-<p>Som navnet lyder så laver algoritmen en skom med forskellige beslutningstræer. Desto flere træer desto mere robust er modellen. Navnet random kommer grundet to koncepter</p>
+<p>Det er en af de mest populære machine learning algoritmer og kan både bruges
+som en regresssion og klassifikation model.</p>
+<p>Som navnet antyder så laver algoritmen en skov med forskellige beslutningstræer.
+Desto flere træer desto mere robust er modellen. Navnet random kommer grundet to koncepter</p>
 <ol style="list-style-type: decimal">
-<li>Et randomiseret sample af trænings data når man bygger træet</li>
+<li>Et randomiseret sample af trænings data, når man bygger træet</li>
 <li>Et randomiseret subsæt af features, når man splitter noder.</li>
 </ol>
-<p>Når vi træer hver træ så lærer den fra et random sample af data punkter. Samples er trukket med erstatning, som kaldes <strong>bootstrapping</strong>, som betyder at et sample vil vlie brugt flere gange i et enkelt træ. Ideen er at ved at træne hver træ med forskellige samples, så vil vi få en lavere varians og få et højere bias.</p>
-<p>Ens prediction fås ved at tage gennmsnittet af predictor for hver beslutningstræ. Denne procedure kaldes for <strong>bagging</strong>.</p>
-<p>Hver træ får en klassifikation. Hvis der kommer et ny træ, så vil skoven stemme om hvad det nye træ skal kategoriseres som. Den tager gennemsnit af stemmer og på den måder udvælger man det bedste valg.</p>
-<p>Fordele er man kan bruge den som klassifikation og regression. Den vil ikke overfitte. Den kan håndtere store datasæt med mange dimensioner.</p>
-<p>Ulemper er den ikke er så god til regressioner. Den er ikke god til at forudsige. Der er heller ikke meget kontrol over modellen.</p>
-<p>Dog er modellen anvendilige i mange sektor såsom banker, forsikringsselskaber, forretninger som
-kan bruges til at finde de loyolae kunder. Den kan også bruges i aktiemarkedet til ast finde opførelsen af en aktie.</p>
+<p>Når vi træer hver træ så lærer den fra et random sample af data punkter.
+Samples er trukket med erstatning, som kaldes <strong>bootstrapping</strong>, som betyder
+at et sample vil blive brugt flere gange i et enkelt træ. Ideen er at ved at
+træne hver træ med forskellige samples, så vil vi få en lavere varians og
+ikke få et højere bias.</p>
+<p>Ens prediction fås ved at tage gennmsnittet af predictor for hver beslutningstræ.
+Denne procedure kaldes for <strong>bagging</strong>.</p>
+<p>Fordele er man kan bruge den som klassifikation og regression. Den vil ikke overfitte.
+Den kan håndtere store datasæt med mange dimensioner.</p>
+<p>Ulemper er den ikke er så god til regressioner. Den er ikke god til at forudsige.
+Der er heller ikke meget kontrol over modellen.</p>
+<p>Dog er modellen anvendelig i mange sektor såsom banker, forsikringsselskaber,
+forretninger somkan bruges til at finde de loyolae kunder. Den kan også bruges i
+aktiemarkedet til ast finde opførelsen af en aktie.</p>
 </div>
 <div id="data" class="section level2">
 <h2>Data</h2>
 <p>I dette projekt bruger jeg data
-fra Telco Customer Churn. Data indeholder 7043 rækker som hver repræsentere en kunde. Der er 21 kolonner som er mulige predictor, der giver information til vi kan forecast opførelse og give indsigt på forebyggelsesprogrammer.</p>
-<p><code>Churn</code> er den afhængige variable og viser om kunden har forladt virksomheden indenfor den seneste måned.</p>
+fra Telco Customer Churn. Data indeholder 7043 rækker som hver repræsentere en kunde.
+Der er 21 kolonner som er mulige predictor, der giver information til vi kan
+forecast opførelse og give indsigt på forebyggelsesprogrammer.</p>
+<p><code>Churn</code> er den afhængige variable og viser om kunden har forladt virksomheden
+indenfor den seneste måned.</p>
+<p>Jeg bruger funnktionen <code>skim</code> til at skabe et overblik over mit data.</p>
 <pre class="r"><code>telco &lt;- readr::read_csv(&quot;WA_Fn-UseC_-Telco-Customer-Churn.csv&quot;)
 telco %&gt;%
   skimr::skim()</code></pre>
@@ -364,7 +382,7 @@ telco %&gt;%
 <ul>
 <li><strong>customerID</strong> er en unik id for hver række og af den grund har den ingen
 deskriptiv eller predictive power og den skal fjernes.</li>
-<li>Der er meget for manglende værdier, som vi ud fra <code>skim()</code> kan se kommer fra
+<li>Der er meget få manglende værdier, som vi ser ud fra <code>skim()</code> kan se kommer fra
 TotalCharges. De kan godt slettes.</li>
 </ul>
 <pre class="r"><code>telco &lt;- telco %&gt;%
@@ -373,13 +391,14 @@ TotalCharges. De kan godt slettes.</li>
 </div>
 <div id="modellering-med-tidymodels" class="section level2">
 <h2>Modellering med <code>tidymodels</code></h2>
-<p>Denne post er mest for at give en introduktion til tidymodels. Derfor vil modellen
-være simpel og kommer til at bestå af <strong>logistic regression</strong> model.</p>
+<p>Denne post giver også en introduktion til tidymodels. Derfor vil modellen
+være simpel og kommer til at bestå af <strong>logistic regression</strong> model uden meget
+data bearbejdring.</p>
 </div>
 <div id="train-and-test-split" class="section level2">
 <h2>Train and test split</h2>
-<p><code>rsample()</code> kan bruges til at lave en randomiserede træning og test data, som selvfølgelig
-er konstrueret udfra vores orginale telco data.</p>
+<p><code>rsample()</code> kan bruges til at lave en randomiserede træning og test data,
+som selvfølgelig er konstrueret udfra vores orginale telco data.</p>
 <pre class="r"><code>set.seed(1972)
 
 train_test_split &lt;- rsample::initial_split(
@@ -399,17 +418,18 @@ test_tbl &lt;- train_test_split %&gt;% testing()</code></pre>
 <div id="en-bage-opskrift" class="section level2">
 <h2>En bage opskrift</h2>
 <p>For at lave en del af arbejde for at bygge modellen bruger vi <code>recipe()</code>. Denne
-pakke bruger bage methefor til at behandle data og foretage diverse præprocessor
+pakke bruger <em>bage metafor</em> til at behandle data og foretage diverse præprocessor
 såsom, missing values, fjerne predictor, centering og scaling osv..</p>
 <p>Det første man gør er at definere <code>recipe</code> og de transformationer man vil bruge
-på ens data. Der er ikke meget at gøre i dette tilfælde, udover at transformere
+på ens data. Der er ikke meget at gøre i dette tilfælde, udover at tranaformerer
 til faktor.</p>
 <pre class="r"><code>recipe_simple &lt;- function(dataset) {
   recipe(Churn ~ ., data = dataset) %&gt;%
     step_string2factor(all_nominal(), -all_outcomes()) %&gt;%
     prep(data = dataset)
 }</code></pre>
-<p>For at undgår man vi har en <strong>data lækage</strong> (oveføre information mellem træning og test data), skal data være ‘prepped’ ved
+<p>For at undgår man vi har en <strong>data lækage</strong> (oveføre information mellem træning
+og test data), skal data være ‘prepped’ ved
 kun at bruge <code>train_tbl</code>.</p>
 <pre class="r"><code>recipe_prepped &lt;- recipe_simple(dataset = train_tbl)</code></pre>
 <p>Som den sidste del så skal vi <em>bage opskriften</em> for at alle præprocessor
@@ -419,9 +439,11 @@ test_baked &lt;- bake(recipe_prepped, new_data = test_tbl)</code></pre>
 </div>
 <div id="fit-modellen" class="section level2">
 <h2>Fit modellen</h2>
-<p><code>Tidymodels</code> er det helt nye indskab fra tidyverse folkene på at skabe et framwork for machine learning.
-Hertil er der blevet lavet en del justeringer og nye pakker. En central pakke i dette framwork er <code>parsnip</code>,
-som skaber en adgang til mange machine learning pakker uden man skal kunne syntaksen til dem alle.</p>
+<p><code>Tidymodels</code> er det helt nye indspark fra tidyverse folkene på at skabe et framwork
+for machine learning.
+Hertil er der blevet lavet en del justeringer og nye pakker. En central pakke i
+dette framwork er <code>parsnip</code>,som skaber en adgang til mange machine learning pakker
+uden man skal kunne syntaksen til dem alle.</p>
 <p>Man skal følge tre trin:</p>
 <ol style="list-style-type: decimal">
 <li>Bestem <strong>typen af modellen</strong> og <strong>mode</strong>.</li>
@@ -442,7 +464,7 @@ Det smarte er vi bare kan skifte det ud og så klare parsnip transitionen.</p>
 <p>Det er væsentlig at se hvor god modellen er og her bruger vi pakken
 <code>yardstick</code>, som gør det let at beregne forskellige måleværktøjer.
 Før man kan beregne disse måle enheder skal vi beregne nogle
-predictor ved at bruge test_baked til predict funktionen.</p>
+predictor ved at bruge <code>test_baked</code> til predict funktionen.</p>
 <pre class="r"><code>prediction_glm &lt;- logistic_glm %&gt;%
   predict(new_data = test_baked) %&gt;%
   bind_cols(test_baked %&gt;% select(Churn))

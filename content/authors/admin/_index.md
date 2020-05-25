@@ -10,15 +10,15 @@ authors:
 superuser: true
 
 # Role/position
-role: Data Scientist
+role: Jr. Data Scientist
 
 # Organizations/Affiliations
 organizations:
-- name: Magasin
+- name: 
   url: ""
 
 # Short bio (displayed in user profile at end of posts)
-bio: I am glad to introduce the new Digital Marketing team. We are our a new team of four with a Gro specialist, Data Scientist and our "My Captain - Dead Poets Society" Henri. We want to contributed to a deeper understand of the online sales though our special knowleged. 
+bio: You can always contact me for a talk!
 
 
 # interests:
@@ -39,7 +39,7 @@ bio: I am glad to introduce the new Digital Marketing team. We are our a new tea
 social:
 - icon: twitter
   icon_pack: fab
-  link: https://twitter.com/GeorgeCushen
+  link: https://twitter.com/lucasbagge
 - icon: github
   icon_pack: fab
   link: https://github.com/lucasbagge
@@ -59,4 +59,7 @@ user_groups:
 - Visitors
 ---
 
-I am glad to introduce the new Digital Marketing team. We are our a new team of four with a Gro specialist, Data Scientist and our "My Captain - Dead Poets Society" Henri. We want to contributed to a deeper understand of the online sales though our special knowleged.  
+My name is Lucas Bagge and I have a key interest in everything about
+Data Scientist. I have a lot of experience in the field from my studies and
+work. Here I have work with building models, dashboard and making analysis.
+This blog is for me to play around with models and show make ability. 
