@@ -29,10 +29,10 @@ projects: []
 
 <div id="introduktion" class="section level2">
 <h2>Introduktion</h2>
-<p>Denne post jeg på kigger på to modeller.
+<p>I denne post vil jeg kigger på to modeller.
 Den <strong>logistiske regression</strong> og <strong>random forest</strong>, hvor de begge bliver brugt
 som klassifikations modeller.</p>
-<p>Jeg kommer til at gennemgå og beskrive random forst da det er en model,
+<p>Jeg kommer til at gennemgå og beskrive Random Forest da det er en model,
 som er forholdsvis ny for mig og der er nogle teoretiske framwork jeg gerne
 vil prøve at forklare.</p>
 <p>Desuden kommer vi til at stifte bekendtskab med <code>parsnip</code> som gør det let at
@@ -48,7 +48,7 @@ som en regresssion og klassifikation model.</p>
 <p>Som navnet antyder så laver algoritmen en skov med forskellige beslutningstræer.
 Desto flere træer desto mere robust er modellen. Navnet random kommer grundet to koncepter</p>
 <ol style="list-style-type: decimal">
-<li>Et randomiseret sample af trænings data, når man bygger træet</li>
+<li>Et randomiseret sample af trænings data, når man bygger hver enkelt træ.</li>
 <li>Et randomiseret subsæt af features, når man splitter noder.</li>
 </ol>
 <p>Når vi træer hver træ så lærer den fra et random sample af data punkter.
@@ -382,8 +382,7 @@ telco %&gt;%
 <ul>
 <li><strong>customerID</strong> er en unik id for hver række og af den grund har den ingen
 deskriptiv eller predictive power og den skal fjernes.</li>
-<li>Der er meget få manglende værdier, som vi ser ud fra <code>skim()</code> kan se kommer fra
-TotalCharges. De kan godt slettes.</li>
+<li>Der er meget få <strong>NA</strong> værdier, så de kan jeg tillade mig at slette.</li>
 </ul>
 <pre class="r"><code>telco &lt;- telco %&gt;%
   select(-customerID) %&gt;%
@@ -482,7 +481,7 @@ head(prediction_glm)</code></pre>
 <p>Der kan benyttes mange matricer til at undersøge hvor god modellen er,
 men fokus for denne post bliver <strong>accuracy</strong>, <strong>precision</strong>, <strong>recall</strong> og <strong>F1_score</strong>.</p>
 <p>Disse mål bliver udledt af <strong>Confusion Matrix</strong>, som er en tabel der beskriver
-hvor godt en klassifikations model klare sig. Denne matric er i sig selv ikke svære at
+hvor godt ens klassifikations model klarer sig. Denne matrice er i sig selv ikke svær at
 forstå, da den angiver antallet af; <em>false positives</em>, <em>false negatives</em>, <em>true positives</em>
 og <em>true negatives</em>. Dog er nogle af målene, som udledes herfra svære koncepter og kræver
 reflektion for at forstå deres betydning.</p>
@@ -677,5 +676,5 @@ head(pred_rf)</code></pre>
 ved vores logistisk regression.</p>
 <p>Modellen klare sig på lige fod med regressionsmodellen. Man kunne gå tilbage til modellen
 og laver yderligere feature eengierning da det ville gøre noget for selve
-præsentationen af modellen.</p>
+præcisionen af modellen.</p>
 </div>

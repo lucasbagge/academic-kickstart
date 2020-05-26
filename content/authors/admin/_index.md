@@ -59,7 +59,8 @@ user_groups:
 - Visitors
 ---
 
-My name is Lucas Bagge and I have a key interest in everything about
-Data Scientist. I have a lot of experience in the field from my studies and
-work. Here I have work with building models, dashboard and making analysis.
-This blog is for me to play around with models and show make ability. 
+My name is Lucas Bagge and I have a key interest in everything about the
+Data Scientist field. I have a lot of experience from my studies and
+work. Here I have work with building models, dashboard and making analysis with the
+different technics.
+This blog is for me to play around with models and show what I can do. 

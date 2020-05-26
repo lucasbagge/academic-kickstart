@@ -25,8 +25,8 @@ projects: []
 
 <div id="explore-data" class="section level2">
 <h2>Explore data</h2>
-<p>Målet for dette opslag er at forudsige om et beach volleyball hold af to vandt deres spil
-baseret på <em>game play stat</em>; errors, blocks, attacks. etc. Da der er er meget data, kan
+<p>Målet for dette opslag er at forudsige om et beach volleyball vil vinde
+baseret på deres <em>game play stat</em>; errors, blocks, attacks. etc. Da der er er meget data, kan
 vi benytte os af en mere avanceret machine larning model <strong>XGBoost</strong>. En af de ting som
 er krævende ved denne model er den har en masse parameter, som kræver tuning.</p>
 <pre class="r"><code>vb_matches &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-19/vb_matches.csv&quot;, guess_max = 76000)
@@ -64,7 +64,7 @@ vb_matches</code></pre>
 ## #   l_p2_tot_hitpct &lt;dbl&gt;, l_p2_tot_aces &lt;dbl&gt;, l_p2_tot_serve_errors &lt;dbl&gt;,
 ## #   l_p2_tot_blocks &lt;dbl&gt;, l_p2_tot_digs &lt;dbl&gt;</code></pre>
 <p>Data indeholder <em>match stat</em> som; error, kills etc.. De oplysninger skal vi bruge i vores model. For at finde frem til det
-kræves der noget feature engineering, hvor vi skal beregne dem for vinder og taberne.
+kræves der noget feature engineering, hvor vi skal beregne vinder og taber.
 Der er nogle <code>NA</code> værdier som vi undlader at medtage i vores data.</p>
 <pre class="r"><code>vb_parsed &lt;- vb_matches %&gt;%
   transmute(
@@ -118,14 +118,8 @@ vb_df %&gt;% count(gender)</code></pre>
 ##   &lt;fct&gt;  &lt;int&gt;
 ## 1 M      14364
 ## 2 W      14300</code></pre>
-<p>I de tidligere år hold de ikke øje med det. Derfor kan vi slette na.
-Der ryger en del observationer, men det er stadig nok til vi kan lave voresa model.
-Vi vil have en række for hver udkom.</p>
-<p>Desuden bygger vi en to data frames med vinder og taber.</p>
-<p>Nu vil vi se yderligere undersøgelse.</p>
-<pre class="r"><code>library(tidyquant)
-
-vb_df %&gt;%
+<p>Jeg bygger to dataframe en for vinder og en for taber.</p>
+<pre class="r"><code>vb_df %&gt;%
   pivot_longer(attacks:digs, names_to = &quot;stat&quot;, values_to = &quot;value&quot;) %&gt;%
   ggplot(aes(gender, value, fill = win, color = win)) +
   geom_boxplot(alpha = 0.4) +
@@ -133,8 +127,7 @@ vb_df %&gt;%
   labs(y = NULL, color = NULL, fill = NULL)</code></pre>
 <p><img src="/post/2020-05-22-xgboost-med-tidymodels_files/figure-html/unnamed-chunk-3-1.png" width="2400" /></p>
 <p>Vi har delt ud på mænd og kvinder. Der er nogle ting som er meget lig hvad vi ville
-forvente. Dog e serve_error ikke den store betydning. Error har en stor betydning.
-Attacks ser ud at der ingen forskel er. Der er 300, men gad vide om det er en fejl eller?</p>
+forvente. Dog ligner det at serve_error ikke har den store betydning. Error har en stor betydning.</p>
 </div>
 <div id="byg-modellen" class="section level2">
 <h2>Byg modellen</h2>
@@ -404,7 +397,7 @@ final_res %&gt;%
 </div>
 <div id="apendix" class="section level2">
 <h2>Apendix</h2>
-<p>Jeg har leget med et andet plot.</p>
+<p>Jeg har leget med et andet plot, som jeg synes er meget spændende.</p>
 <pre class="r"><code>vb_matches %&gt;%
   # put all player countries into one column named &quot;player_country&quot;
   gather(c(

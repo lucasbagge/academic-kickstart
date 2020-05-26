@@ -40,11 +40,11 @@ library(magrittr)
 
 ## Introduktion
 
-Denne post jeg på kigger på to modeller.
+I denne  post vil jeg kigger på to modeller.
 Den **logistiske regression** og **random forest**, hvor de begge bliver brugt
 som klassifikations modeller.
 
-Jeg kommer til at gennemgå og beskrive random forst da det er en model, 
+Jeg kommer til at gennemgå og beskrive Random Forest da det er en model, 
 som er forholdsvis ny for mig og der er nogle teoretiske framwork jeg gerne 
 vil prøve at forklare.
 
@@ -62,7 +62,7 @@ som en regresssion og klassifikation model.
 Som navnet antyder så laver algoritmen en skov med forskellige beslutningstræer. 
 Desto flere træer desto mere robust er modellen. Navnet random kommer grundet to koncepter
 
-1) Et randomiseret sample af trænings data, når man bygger træet
+1) Et randomiseret sample af trænings data, når man bygger hver enkelt træ.
 2) Et randomiseret subsæt af features, når man splitter noder.
 
 Når vi træer hver træ så lærer den fra et random sample af data punkter. 
@@ -106,8 +106,7 @@ Her er en række ting at lægge mærke til her.
 
 - **customerID** er en unik id for hver række og af den grund har den ingen
 deskriptiv eller predictive power og den skal fjernes.
-- Der er meget få manglende værdier, som vi ser ud fra `skim()` kan se kommer fra
-TotalCharges. De kan godt slettes.
+- Der er meget få **NA** værdier, så de kan jeg tillade mig at slette.
 
 ```{r}
 telco <- telco %>% 
@@ -224,7 +223,7 @@ Der kan benyttes mange matricer til at undersøge hvor god modellen er,
 men fokus for denne post bliver **accuracy**, **precision**, **recall** og **F1_score**.
 
 Disse mål bliver udledt af **Confusion Matrix**, som er en tabel der beskriver
-hvor godt en klassifikations model klare sig. Denne matric er i sig selv ikke svære at
+hvor godt ens klassifikations model klarer sig. Denne matrice er i sig selv ikke svær at
 forstå, da den angiver antallet af; *false positives*, *false negatives*, *true positives*
 og *true negatives*. Dog er nogle af målene, som udledes herfra svære koncepter og kræver
 reflektion for at forstå deres betydning.
@@ -386,4 +385,4 @@ ved vores logistisk regression.
 
 Modellen klare sig på lige fod med regressionsmodellen. Man kunne gå tilbage til modellen
 og laver yderligere feature eengierning da det ville gøre noget for selve 
-præsentationen af modellen.
+præcisionen af modellen.

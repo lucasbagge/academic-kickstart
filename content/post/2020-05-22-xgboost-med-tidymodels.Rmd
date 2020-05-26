@@ -32,13 +32,14 @@ library(tibble)
 library(dplyr)
 library(tidyr)
 library(magrittr)
+library(tidyquant)
 theme_set(theme_minimal())
 ```
 
 ## Explore data
 
-Målet for dette opslag er at forudsige om et beach volleyball hold af to vandt deres spil
-baseret på *game play stat*; errors, blocks, attacks. etc. Da der er er meget data, kan
+Målet for dette opslag er at forudsige om et beach volleyball vil vinde 
+baseret på deres *game play stat*; errors, blocks, attacks. etc. Da der er er meget data, kan
 vi benytte os af en mere avanceret machine larning model **XGBoost**. En af de ting som
 er krævende ved denne model er den har en masse parameter, som  kræver tuning. 
 
@@ -50,7 +51,7 @@ vb_matches
 ```
 
 Data indeholder *match stat* som; error, kills etc.. De oplysninger skal vi bruge i vores model. For at finde frem til det 
-kræves der noget feature engineering, hvor vi skal beregne dem for vinder og taberne. 
+kræves der noget feature engineering, hvor vi skal beregne vinder og taber. 
 Der er nogle `NA` værdier som vi undlader at medtage i vores data.
 
 ```{r}
@@ -97,18 +98,9 @@ vb_df <- bind_rows(winner,
 vb_df %>%  count(gender)
 ```
 
-I de tidligere år hold de ikke øje med det. Derfor kan vi slette na.
-Der ryger en del observationer, men det er stadig nok til vi kan lave voresa model.
-Vi vil have en række for hver udkom.
-
-Desuden bygger vi en to data frames med vinder og taber. 
-
-Nu vil vi se yderligere undersøgelse.
-
+Jeg bygger to dataframe en for vinder og en for taber.
 
 ```{r}
-library(tidyquant)
-
 vb_df %>% 
   pivot_longer(attacks:digs, names_to = "stat", values_to = "value") %>% 
   ggplot(aes(gender, value, fill = win, color = win)) +
@@ -118,8 +110,7 @@ vb_df %>%
 ```
 
 Vi har delt ud på mænd og kvinder. Der er nogle ting som er meget lig hvad vi ville
-forvente. Dog e serve_error ikke den store betydning. Error har en stor betydning.
-Attacks ser ud at der ingen forskel er. Der er 300, men gad vide om det er en fejl eller?
+forvente. Dog ligner det at serve_error ikke har den store betydning. Error har en stor betydning.
 
 ## Byg modellen
 
@@ -171,7 +162,6 @@ xgb_grid <- grid_latin_hypercube(
   size = 20 
 )
 xgb_grid
-
 ```
 
 Læg mærke til at vi behandler `mtry()` anderledes fordi den afhænger af de faktiske
@@ -299,7 +289,7 @@ De er forussigelse på testing data. Vi kan se fra vores plot hvordan modellen k
  
 ## Apendix
 
-Jeg har leget med et andet plot.
+Jeg har leget med et andet plot, som jeg synes er meget spændende.
 
 ```{r}
 vb_matches %>%
