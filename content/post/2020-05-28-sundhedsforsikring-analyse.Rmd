@@ -1,0 +1,57 @@
+---
+title: Sundhedsforsikring analyse
+author: Lucas Bagge
+date: '2020-05-28'
+slug: sundhedsforsikring-analyse
+categories:
+  - Explanatory data
+tags:
+  - explanatory data
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-05-28T05:39:03+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, 
+                      echo = TRUE, dpi = 300, cache.lazy = FALSE,
+                      tidy = "styler", fig.width = 8, fig.height = 5)
+library(tidymodels)
+library(skimr)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+```
+
+https://data.healthcare.gov/ giver adgang til sundhedsdata, som inkludere
+sundhedsplaner for familier i stater hvor staten operer i markedet.Kvantitativ 
+analyse kan gøre priser mere transperant og letter at gennemskue.
+
+Lad os kigge på data
+
+```{r}
+data <- read.csv("QHP_Landscape_Individual_Market_Medical.csv", header = TRUE,
+                 sep = ",")
+data <- data %>% 
+  rename_all(tolower)
+```
+
+Der er en række kolonner, men i denne analyse vil vi se på følgende:
+
+- `Issuer Name`
+- `County Name`
+- Plan Marketing Name
+- Medical Maximum Out Of Pocket - Individual - Standard
+- Medical Deductible — Individual — Standard
+- Primary Care Physician — Standard
+- Emergency Room — Standard
+- Specialist — Standard
