@@ -32,6 +32,11 @@ library(tibble)
 library(dplyr)
 library(tidyr)
 library(magrittr)
+library(readr)
+library(quantmod)
+library(tibbletime)
+library(dplyr)
+library(tidyr)
 ```
 
 ## INtroduktion
@@ -59,5 +64,52 @@ Med denne metode kan vi risiker at for meget upræcise test eror fordi modellen 
 
 ## Cross validation
 
-Denne metode bruges som validation til ast beregne test error. Med disse estimater kan vi finde den bedste model. Ideen er vi deleter data op i K lige store dele. Her efterlader vi delen k, fitter modellen til K-1 og hermed opnår prediction. Der foregår i forskellig trin, så vi starter med et valideingsæt og så skiftes den ud med de sandra sample.  
+Denne metode bruges som validation til ast beregne test error. Med disse estimater kan vi finde den bedste model. Ideen er vi deleter data op i K lige store dele. Her efterlader vi delen k, fitter modellen til K-1 og hermed opnår prediction. Der foregår i forskellig trin, så vi starter med et valideingsæt og så skiftes den ud med de andre sample.  
 
+Jeg viser en uddybning og hvordan man kan bruge cross validation i r. Her skal vi bruger
+noget data, hvor vi tager udgangspunk i noget finansiel data. 
+
+```{r}
+start <- as.Date("2000-01-01")
+end <- as.Date("2019-01-01")
+
+getSymbols("AAPL", src = "yahoo", from = start, to = end)
+tail(AAPL)
+```
+
+For at fortsætte skal vi lave noget yderligere featur enginering for at lave noget
+input og output variabler.
+
+- Input har jeg valgt skal være (open-close)/open, (high - low)/low, sd af de sidste
+5 dages afkast og gennemsnittet af de 5 dages afkast.
+- Output skal indikere om man vil købe aktien. Hvis i morgen lukke pris
+er større end i dags så skal output variablen være 1 og -1 ellers for at indikere
+man ikke skal købe den. 
+
+Disse feature valg er random valgt, men hvis man vil dykke længere ned i det
+kan man læse mere her https://en.wikipedia.org/wiki/Feature_selection.
+```{r}
+aaple <- tidy(AAPL)
+rolling_mean_5 <- rollify(mean, window = 5)
+rolling_sd_5 <- rollify(sd, window = 5)
+
+ap <- aaple %>% 
+  pivot_wider(
+    names_from = series,
+    values_from = value
+    ) %>% 
+  rename_all(tolower) %>% 
+  mutate(Open_Close = (aapl.open - aapl.close) / aapl.open,
+         High_low = (aapl.high - aapl.low) / aapl.low,
+         percent = (aapl.close - lead(aapl.close)) / lead(aapl.close) * 100,
+         ret_5 = rolling_mean_5(percent),
+         sd_5 = rolling_sd_5(percent)) %>% 
+  drop_na()
+
+X <- ap %>% 
+  select(Open_Close, High_low, ret_5, sd_5)
+
+Y <-  1
+```
+
+https://blog.quantinsti.com/cross-validation-machine-learning-trading-models/
