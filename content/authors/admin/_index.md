@@ -62,4 +62,4 @@ user_groups:
 Mit navn er Lucas Bagge og denne blog kommer til at handle om data, Machine Learning, R, økonomi, samfund, politik og hvad der sker ude verden.
 
 Jeg vil tilstræbe at give folk indsigt i teknikker og metoder samt prøve at give
-en syn på events.
+en syn på verdensøkonomien.
