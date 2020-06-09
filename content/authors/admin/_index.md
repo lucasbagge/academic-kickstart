@@ -18,7 +18,7 @@ organizations:
   url: ""
 
 # Short bio (displayed in user profile at end of posts)
-bio: You can always contact me for a talk!
+bio: Du kan altid tage kontakt til mig for en snak!
 
 
 # interests:
@@ -59,8 +59,7 @@ user_groups:
 - Visitors
 ---
 
-My name is Lucas Bagge and I have a key interest in everything about the
-Data Scientist field. I have a lot of experience from my studies and
-work. Here I have work with building models, dashboard and making analysis with the
-different technics.
-This blog is for me to play around with models and show what I can do. 
+Mit navn er Lucas Bagge og denne blog kommer til at handle om data, Machine Learning, R, økonomi, samfund, politik og hvad der sker ude verden.
+
+Jeg vil tilstræbe at give folk indsigt i teknikker og metoder samt prøve at give
+en syn på events.
