@@ -615,7 +615,7 @@ rm(mod, mod_results_tbl, df_parameter) # Clear memory
 
 ## Model Evaluation metrics
 
-Denne sektion summaer præsentationen af de tre modeller fra vores cross validation og hyperparameter tuning i sektion foroven. Evaluations metricerne som kan ses forneden er:
+Denne sektion opsummerer præsentationen af de tre modeller fra vores cross validation og hyperparameter tuning i sektion foroven. Evaluations metricerne som kan ses forneden er:
 
 
 * **accuracy**: Andelen af observationer modellen korrekt forudsiger.
@@ -629,7 +629,7 @@ Plottet viser:
 * GLM viser gode resultater sammenlignet med GLMNET.
 * Alle modeller har en højere **specificity** end **sensitivity**, som måske skyldes imbalance i vores data.
 
-```{r echo= FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.height=6, fig.width=2}
+```{r echo= FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.height=10, fig.width=6}
 # Extract the cross validated predictions
 mod_summary_all <-
   bind_rows(mod_glm[["df"]] %>% mutate(model = "glm"),
