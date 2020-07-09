@@ -629,7 +629,7 @@ Plottet viser:
 * GLM viser gode resultater sammenlignet med GLMNET.
 * Alle modeller har en højere **specificity** end **sensitivity**, som måske skyldes imbalance i vores data.
 
-```{r echo= FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.height=2, fig.width=2}
+```{r echo= FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.height=6, fig.width=2}
 # Extract the cross validated predictions
 mod_summary_all <-
   bind_rows(mod_glm[["df"]] %>% mutate(model = "glm"),
