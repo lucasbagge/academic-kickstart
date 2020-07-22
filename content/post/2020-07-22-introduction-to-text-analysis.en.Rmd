@@ -35,7 +35,15 @@ theme_set(theme_minimal())
 
 # What can it be used for?
 
-# Methedology
+In todays world there is social media and other online sources with information. Why not exploder these and make analysis. But it is not numbers? Numbers isn´t the only think you can analysis. When you have an resturant you are interting in your [EBITA](https://www.shareholders.dk/investorordbogen/1117/ebita) but you might bee equally interesting in an customer review on trip advisor. The only problems is that if you are owner of a big chain then 1000 of reviews might takes you some time to read though.
+
+It is where Text mining comes in. Text mining is an automatic process that uses natural langauge to extract valuable information from unstructed text to data a model can understand and analysis can draw conclusion on. So from a small to a big business owner one can use text mining to reduce task, get to know ones customer and used data in the most essentiel ways.
+
+There is a lot to do with text mining and different methods and techniques. Because the toolbox is so big it is worth to take a deep drive into what the termology is and get a generel view of the usable practise.
+
+# Methods and Techniques
+
+
 
 # Data
 
