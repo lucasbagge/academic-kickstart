@@ -43,6 +43,10 @@ There is a lot to do with text mining and different methods and techniques. Beca
 
 # Methods and Techniques
 
+When using text mining there is different models and techniques that can be used. This is my first shot at using text moding so it is important for me to try to explain the theory I am going to use and the different concepts that are essentiel. 
+
+So the first thing is so do we represent a text as a **data frame**? That is simple (but can gives us problems, which is going to be explain later) just take every word and make it a column. This process is called **Tokenization** and every distinct piece is called a **token**. When this is don we know have a data frame where each row represent a document, each column is a distinct token and each cell is a count of the token for the document. This format is called **document tern matrix**. Here we have a number in the row that count how often one word is being used. This is a very simple (yet very efficient model) and is called **Bag of words** and is often the first model you use. When you start out this is a good standard but there are different of problems you should consider as; casing, punctuation, numbers, every word, symbolds and similiar words.
+
 
 
 # Data
