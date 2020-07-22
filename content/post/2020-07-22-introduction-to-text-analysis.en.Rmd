@@ -1,0 +1,46 @@
+---
+title: Introduction to Text analysis
+author: Lucas Bagge
+date: '2020-07-22'
+slug: introduction-to-text-analysis
+categories:
+  - text mining
+  - tidymodels
+tags:
+  - rf
+  - caret
+  - ggplot2
+  - rpart
+  - text mining
+subtitle: An analysis of sms data
+draft: TRUE
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, 
+                      echo = TRUE, dpi = 300, cache.lazy = FALSE,
+                      tidy = "styler", fig.width = 8, fig.height = 5)
+library(tidymodels)
+library(skimr)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(tidyquant)
+theme_set(theme_minimal())
+```
+
+# Introduction
+
+# What can it be used for?
+
+# Methedology
+
+# Data
+
+# Code 
+
+# Result
+
+# Conclusion
