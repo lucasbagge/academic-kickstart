@@ -60,22 +60,102 @@ TF(t,d) = \frac{freq(t,d)}{\sum^n_i freq(t_i,d)}
 $$
 Here *freq* is the count instance of the term, *t*, in the document, *d*. TF is the proportion af the count  *t* in d. This is an incomplete measure of how important a word in a text. It is incomplete because some words as; "is" etc is not neassayc important. Here one can load in some R packages that handles this and it is called **stop words**. In text mining this approch is not best practise because we actuallt don´t know beforehand that some word is important for the text.   This can be seen as normalize the document.
 
-Another approch is to look at a terms **inverse document frequency (idf)**, which decrease the weight of words that a used often and increases the weight of the opposite;
+Another approch is to look at a terms **inverse document frequency (idf)**, which decrease the weight of words that is used often and increases the weight of the word that are used often;
 
 $$
-idf(t) = log(\frac{N}{count(t)})
+idf(t) = log \ (\frac{N}{count(t)})
 $$
 
 Here N is the distinct document in the corpus and count(t) is the number of document where the t is appearing.
 
 Combing the two equation we get a tf-idf which empower our document term frequency model from before.
 
+The tf-idf is giving by;
 
+$$
+tf-idf=tf(t,d)*idf(t)
+$$
+So to sum up tf-idf is a powerful techinuqe to enhance the information/signal because we by this method normalize the data and weigth it. 
+
+## n-grams
+
+But there is more to look at for this still simple model. For know we have looked at words as a single value. Words often cannot be seen as one word but between words. This is where **n-grams** in a usefull tools. When applying n-grams we look at the relationships between words and this can give us many insight. Here we get the option to ordering our words in the bags of word model. 
+
+An overview of the names of ngrams is the following:
+
+- unigrams
+- bigrams
+- trigrams
+- 4-grams
+- 5-grams
+
+This type of analysis is good to make a correlation analysis between words. One problem is that we gonna expand the size of the matrix. This problem is a huge and very often problem called **curse of dimensionality**
+
+##  Curse of Dimensionality
+
+What this mean is that you are getting to many features. This can lead to several problems:
+
+- If we have more features than observatoin than we might overfit our model - this will give us terrible out of sample performance. 
+- **Sparsity** where our data becomes minor because of the growth of dimension.
+
+A way of solving this issue is by using more advanced technique. There a multiple techniques but I will talked about **latent semantic analysis**
+
+## Latent Semantic analysis
+
+By its core LSA are using the thought befind a **Vector Space Model**. By this we work with tect as vectors of numbers and allow us to work with document geometrically. When we can think about documents geomtrically gives us advantages as seeing correlation between documents
+
+måske billede
+
+We can analysis this relationship by using the **dot product** where we see how different word/documents/terms are related to each other. 
+
+By understanding the fundamental theory of the VSM model we can expand it to the LSA model. LSM are using this framwork by leveraging a **singular value decomposition (SVD)** where you factorize a term document to extract similarities in the terms. 
+
+$$
+SVD \ of \ X=t(x)=U\sum V^T
+$$
+
+LSA uses **singular value matrix** as can bee seen from the formular above. This is a factorization tecnique and as mention resample how we calculate the dot product of the different entities.   
+
+For understnading the ceoncept we first have to look at **eigenvalues** which is a diagonally symmetric matrix (meaning that if you flip it than it would look the same). If the matrix is diagonal than it the off diagonal cells are zero. For any matrix of this form there will be are **orthonomal basis** (meaning normalized vectors) and here we get eigenvectors that only extend the original matrix. 
+
+SVD is an extension and includes arbritary matrices and therefore need another vector set. It is giving by the matrices we have calculated in our tf-idf matrix. 
+
+So the overall technique is SVM and LSA describes the application to a particular kind of matrix, mostly a textual data and in our example tf-idf matrix. The idea is to create a **semantic** space where word and documents can be compared. Before we have a finished data we need to project the the new data meaning we need to transform it. It should be mention that it is approximation meaning that we don´t optaion the exact value which gives a problem with liability. 
+
+When we build on the lsa and use this to evaluate a model we need some guidlines to evaluate the models. Here there are different matrices that can be used and I will go though some of them that I rely on. 
+
+## Evaluation matrices
+
+The generel framwork we work outfrom when looking at a classification problem is by looking at the **confusion matrix (cm)**. 
+
+billede
+
+The first metrices we gonna use is the **Accuracy** that tells us what percentage of the predictions were correct.
+
+billede
+
+Another important metrices we can extract from cf is **sensitivity**. It measires what percentage of the ham messages were correctly predicted.
+
+billede
+
+The last metric the post will put focus on is **specificity**. Here we look at what percentage of the spam message were correctly preducted.
+
+Know the techniques and method has been discribed on what is going to be use in the modelling and coding phase. Before going to that parth we need to look and talk about the 
 
 # Data
+
+This post is going to use sms data from the popular site [kaggle](https://www.kaggle.com/ishansoni/sms-spam-collection-dataset)
+
+This is a collection of sms spam that have been used to analysis of being ham or spam. 
+
+The flle contain one message per line. Each line is compoased by twp columns; v1 contain the label (ham or spam) and v2 contain the text message. 
 
 # Code 
 
 # Result
 
 # Conclusion
+
+# Litteratur
+
+- https://towardsdatascience.com/the-curse-of-dimensionality-50dc6e49aa1e?gi=eb64567f0820
