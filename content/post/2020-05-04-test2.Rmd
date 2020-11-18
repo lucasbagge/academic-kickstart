@@ -18,12 +18,12 @@ image:
   focal_point: ''
   preview_only: no
 projects: []
-draft: false
 ---
 
 ```{r setup, include=FALSE}
 library(knitr)
-knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, 
+knitr::opts_chunk$set(
+  cache = FALSE, warning = FALSE, message = FALSE, 
                       echo = TRUE, dpi = 300, cache.lazy = FALSE,
                       tidy = "styler", fig.width = 8, fig.height = 5)
 library(scales)
