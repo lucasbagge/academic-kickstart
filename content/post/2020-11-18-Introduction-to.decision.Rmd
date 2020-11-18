@@ -1,0 +1,32 @@
+---
+title: Introduction to machine learning - decision tree
+author: ''
+date: '2020-11-18'
+slug: introduction-to-machine-learning-decision-tree
+categories:
+  - ML
+  - Decision tree
+tags:
+  - Decision tree.
+subtitle: 'Decision tree explained'
+summary: ''
+authors: []
+lastmod: '2020-05-22T14:42:57+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, 
+                      echo = TRUE, dpi = 300, cache.lazy = FALSE,
+                      tidy = "styler", fig.width = 8, fig.height = 5)
+library(tidyverse)
+library(tidymodels)
+library(tidyquant)
+theme_set(theme_minimal())
+```
