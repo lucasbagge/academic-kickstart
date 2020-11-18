@@ -30,3 +30,44 @@ library(tidymodels)
 library(tidyquant)
 theme_set(theme_minimal())
 ```
+
+# Introduction
+
+This post describes a data driven method that are transparent and easy to interpret.
+I am of course talking about devision trees. Here trees are based on separating records
+into subgroups by creating splits on predictors. These splits are creates from
+logical rules. Fx if age < 55 and edu > 12 then class =1. The results can be
+seen as a more homogeneous in terms of the outcome variable and therefore being a
+useful predictior. 
+
+In the post I will go though two key concepts **recursive partitioning** and
+**pruning**. For measuring the perormance I will go thoug some special metrices
+that are used.
+
+I am also gonna build a classification model based on a stocks.
+
+# Decision tree
+
+For many analysis if one should choose a framwork that work across a wide range
+of situations one would pick the tree methodology. The best way of discribing the
+tree is by an example. Let us say we have some bank data where we want to
+classify the customers as either acceptors or nonacceptors based on; income, education
+level, and average credit card expenditure. By using the tree method we can come
+up with clear rules:
+
+> if(income >106) and (education < 1.5) and (familiy < 2.5) then class = 0
+(nonacceptor)
+
+So what really goes on begind is that we grow a tree and with what we feed the
+tree it starts to split up. But if you dont stop it the growth will not stop.
+
+Let us turn two one of the two keyswords, **Recursive Partitioning**. Assume
+we have a outcome variable Y and several predictores, $X_1,X_2,...,X_p$.
+What recursive partitioning is about is we divides X into a p-dimensional space
+this mean that we look at $X_i$ and its corresponding value, $s_i$. This X is 
+splited up into two paths, one $X_i<s_i$ and the other $X_i>s_i$. Then one or 
+both parts is divided by in the same manner by choosing another predictor
+
+
+
+
