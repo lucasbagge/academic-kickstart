@@ -44,6 +44,10 @@ codefolding_show = "hide"
 # Set to true to exclude the "Show/hide all" button
 codefolding_nobutton = false
 
+# Enable global LaTeX math rendering?
+  #   If false, you can enable it locally on a per page basis.
+  math = true
+
 [permalinks]
   authors = "/author/:slug/"
   tags = "/tag/:slug/"
