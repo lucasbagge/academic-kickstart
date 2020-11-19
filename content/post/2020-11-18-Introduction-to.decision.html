@@ -1,0 +1,105 @@
+---
+title: Introduction to machine learning - decision tree
+author: ''
+date: '2020-11-18'
+slug: introduction-to-machine-learning-decision-tree
+categories:
+  - ML
+  - Decision tree
+tags:
+  - Decision tree.
+subtitle: 'Decision tree explained'
+summary: ''
+authors: []
+lastmod: '2020-05-22T14:42:57+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>This post describes a data driven method that are transparent and easy to interpret.
+I am of course talking about devision trees. Here trees are based on separating records
+into subgroups by creating splits on predictors. These splits are creates from
+logical rules. Fx if age &lt; 55 and edu &gt; 12 then class =1. The results can be
+seen as a more homogeneous in terms of the outcome variable and therefore being a
+useful predictior.</p>
+<p>In the post I will go though two key concepts <strong>recursive partitioning</strong> and
+<strong>pruning</strong>. For measuring the perormance I will go thoug some special metrices
+that are used.</p>
+<p>I am also gonna build a classification model based on a stocks.</p>
+</div>
+<div id="decision-tree" class="section level1">
+<h1>Decision tree</h1>
+<p>For many analysis if one should choose a framwork that work across a wide range
+of situations one would pick the tree methodology. The best way of discribing the
+tree is by an example. Let us say we have some bank data where we want to
+classify the customers as either acceptors or nonacceptors based on; income, education
+level, and average credit card expenditure. By using the tree method we can come
+up with clear rules:</p>
+<blockquote>
+<p>if(income &gt;106) and (education &lt; 1.5) and (familiy &lt; 2.5) then class = 0
+(nonacceptor)</p>
+</blockquote>
+<p>So what really goes on begind is that we grow a tree and with what we feed the
+tree it starts to split up. But if you dont stop it the growth will not stop.</p>
+<p>Let us turn two one of the two keyswords, <strong>Recursive Partitioning</strong>. Assume
+we have a outcome variable Y and several predictores, <span class="math inline">\(X_1,X_2,...,X_p\)</span>.
+What recursive partitioning is about is we divides X into a p-dimensional space
+this mean that we look at <span class="math inline">\(X_i\)</span> and its corresponding value, <span class="math inline">\(s_i\)</span>. This X is
+splited up into two paths, one <span class="math inline">\(X_i&lt;s_i\)</span> and the other <span class="math inline">\(X_i&gt;s_i\)</span>. Then one or
+both parts is divided by in the same manner by choosing another predictor.
+The idea is to split the entire X space up and get a possible pure record.</p>
+<div class="figure">
+<img src="decision-tree.PNG" alt="" />
+<p class="caption">Caption for the picture.</p>
+</div>
+<p>This is of course not possible because every predictor as not a clear number
+of records. Therfore wee need some measure for impority. So for every node we
+need to calculate how pure the node is.</p>
+<p>One measure is the <strong>Gini index</strong>. Denote <em>m</em> classes of the respose variable by
+<span class="math inline">\(k=1,2,...,m\)</span>. The Gini index for a split A is defined by</p>
+<p><span class="math display">\[
+I(A)=1-\sum^{m}_{k=1}p^2_k
+\]</span>
+where <span class="math inline">\(p_k\)</span> is the proportion of records in split A that belong to class <span class="math inline">\(k\)</span>.
+This measure takes value between 0 (when all records belong to the same class)
+and <span class="math inline">\(\frac{m-1}{m}\)</span> (when all <em>m</em> classes are equally represented). For the
+two classes case the Gini index would be at its peak when <span class="math inline">\(p_k=0.5\)</span> here the
+split contains 50% of each of the two classes.</p>
+<p>Another useful measure is <strong>entropy measure</strong> whivh for split A is defined as</p>
+<p><span class="math display">\[
+entropy(A)= -\sum^{m}_{k=1}p_k \log_2(p_k).
+\]</span>
+Again this measure ranges between 0 (most pure, all records belong to the same
+class) and <span class="math inline">\(\log_2(m)\)</span> (when all <span class="math inline">\(m\)</span> classes are represented equally).</p>
+<p>When looking at the tree we have different nodes. One is called a <em>decision node</em>
+and they are always followed by anoter node. If we have a new record then it will
+drop down to a decision node and fall into one category until we come to the
+<em>terminal node</em>. When the record reach a terminal node we have classified the
+record.</p>
+<p>Working with decision tree gives two shortcomings.</p>
+<ul>
+<li>Unstability: It is because a tree structure is unstable.</li>
+<li>A tree would lead to overfitting.</li>
+</ul>
+<p>Again the danger with ovefitting is our model will perform bad at new data. One
+way of handling this issue is <strong>pruning</strong>. This methods works where we remoed
+the wealest branches so the tree is reduced in size.</p>
+<p>The pruning wont solve the first issue with the unstability but here we can
+use cross validation. By using cross validation we split the traning data
+into multiple samples and then pool the results. Here we can learn
+how deep to grow the tree. For measuring how deep it should be we will introduce
+<strong>cost complexity (CC)</strong> which is equal to its misclassification error plus a
+penalty factor for the size of the tree. For a tree <em>T</em> that has <em>L(T)</em> terminal
+nodes, the cost complexity can be written as</p>
+<p><span class="math display">\[
+CC(T)=err(T)+\alpha L(T)
+\]</span></p>
+</div>

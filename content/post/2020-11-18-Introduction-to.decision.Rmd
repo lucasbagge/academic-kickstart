@@ -66,7 +66,82 @@ we have a outcome variable Y and several predictores, $X_1,X_2,...,X_p$.
 What recursive partitioning is about is we divides X into a p-dimensional space
 this mean that we look at $X_i$ and its corresponding value, $s_i$. This X is 
 splited up into two paths, one $X_i<s_i$ and the other $X_i>s_i$. Then one or 
-both parts is divided by in the same manner by choosing another predictor
+both parts is divided by in the same manner by choosing another predictor. 
+The idea is to split the entire X space up and get a possible pure record.
+
+![Caption for the picture.](decision-tree.PNG)
+
+This is of course not possible because every predictor as not a clear number
+of records. Therfore wee need some measure for impority. So for every node we 
+need to calculate how pure the node is. 
+
+One measure is the **Gini index**. Denote *m* classes of the respose variable by
+$k=1,2,...,m$. The Gini index for a split A is defined by
+
+$$
+I(A)=1-\sum^{m}_{k=1}p^2_k
+$$
+where $p_k$ is the proportion of records in split A that belong to class $k$.
+This measure takes value between 0 (when all records belong to the same class)
+and $\frac{m-1}{m}$ (when all *m* classes are equally represented). For the 
+two classes case the Gini index would be at its peak when $p_k=0.5$ here the
+split contains 50% of each of the two classes. 
+
+Another useful measure is **entropy measure** whivh for split A is defined as
+
+$$
+entropy(A)= -\sum^{m}_{k=1}p_k \log_2(p_k).
+$$
+Again this measure ranges between 0 (most pure, all records belong to the same 
+class) and $\log_2(m)$ (when all $m$ classes are represented equally).
+
+When looking at the tree we have different nodes. One is called a *decision node*
+and they are always followed by anoter node. If we have a new record then it will
+drop down to a decision node and fall into one category until we come to the
+*terminal node*. When the record reach a terminal node we have classified the
+record. 
+
+Working with decision tree gives two shortcomings. 
+
+- Unstability: It is because a tree structure is unstable.
+- A tree would lead to overfitting.
+
+Again the danger with ovefitting is our model will perform bad at new data. One
+way of handling this issue is **pruning**. This methods works where we remoed
+the wealest branches so the tree is reduced in size. 
+
+The pruning wont solve the first issue with the unstability but here we can
+use cross validation. By using cross validation we split the traning data
+into multiple samples and then pool the results. Here we can learn
+how deep to grow the tree. For measuring how deep it should be we will introduce
+**cost complexity (CC)** which is equal to its misclassification error plus a
+penalty factor for the size of the tree. For a tree *T* that has *L(T)* terminal
+nodes, the cost complexity can be written as
+
+$$
+CC(T)=err(T)+\alpha L(T)
+$$
+where *err(T)* is the fraction of traning records that are misclassified by tree T and $\alpha$
+is a penalty factor for tree size. 
+ 
+Three models has several advantages and are useful for both variable selection 
+(the most important predictor will show uå above), no need for variable
+transformation. The method is also robust to outliers because the splits depends
+on the ordering and not the magnitudes.
+
+One advantages but also a shortcomings is the nonlinearity and non parametric
+with the model. The strengt is it allow a wide range of relationships between
+the predictors and outcome variable. This is how ever also a weakness because we
+might miss relationsship between predictors and the outcome variable. 
+
+Another problem is thaat it require large dataset to cnstruct a good classifier.
+It can also be heavy to run on a computer becasue we need to computing all
+possible plits. 
+
+While the model has it advantages and short commings it is consider to be
+a good method with gives help in both classification and regressions tasks.
+
+# Model
 
 
 
