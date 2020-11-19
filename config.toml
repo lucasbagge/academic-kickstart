@@ -81,6 +81,16 @@ codefolding_nobutton = false
   quality = 90
   anchor = "smart"  # Anchor for cropping. Options include Smart and Center.
 
+  [[menu.main]]
+  name = "Home"
+  url = "#about"
+  weight = 1
+
+[[menu.main]]
+  name = "Posts"
+  url = "#posts"
+  weight = 3
+
 # Taxonomies.
 [taxonomies]
   tag = "tags"
