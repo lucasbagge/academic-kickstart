@@ -47,9 +47,7 @@ codefolding_show = "show"
 # Set to true to exclude the "Show/hide all" button
 codefolding_nobutton = false
 
-# Display next/previous section pager? (true/false)
-section_pager = false
-docs_section_pager = true  # Display pager in Docs layout (e.g. tutorials)?
+
 
 # Workaround Hugo publishing taxonomy URLs as plurals - consistently use singular across Academic.
 [permalinks]
