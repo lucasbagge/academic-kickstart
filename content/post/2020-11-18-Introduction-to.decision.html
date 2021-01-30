@@ -101,49 +101,5 @@ penalty factor for the size of the tree. For a tree <em>T</em> that has <em>L(T)
 nodes, the cost complexity can be written as</p>
 <p><span class="math display">\[
 CC(T)=err(T)+\alpha L(T)
-\]</span>
-where <em>err(T)</em> is the fraction of traning records that are misclassified by tree T and <span class="math inline">\(\alpha\)</span>
-is a penalty factor for tree size.</p>
-<p>Three models has several advantages and are useful for both variable selection
-(the most important predictor will show uå above), no need for variable
-transformation. The method is also robust to outliers because the splits depends
-on the ordering and not the magnitudes.</p>
-<p>One advantages but also a shortcomings is the nonlinearity and non parametric
-with the model. The strengt is it allow a wide range of relationships between
-the predictors and outcome variable. This is how ever also a weakness because we
-might miss relationsship between predictors and the outcome variable.</p>
-<p>Another problem is thaat it require large dataset to cnstruct a good classifier.
-It can also be heavy to run on a computer becasue we need to computing all
-possible plits.</p>
-<p>While the model has it advantages and short commings it is consider to be
-a good method with gives help in both classification and regressions tasks.</p>
-</div>
-<div id="model" class="section level1">
-<h1>Model</h1>
-<pre class="r"><code>turbines &lt;- read_csv(&quot;https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-10-27/wind-turbine.csv&quot;)</code></pre>
-<pre class="r"><code>turbines %&gt;% glimpse()</code></pre>
-<pre><code>## Rows: 6,698
-## Columns: 15
-## $ objectid                   &lt;dbl&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1...
-## $ province_territory         &lt;chr&gt; &quot;Alberta&quot;, &quot;Alberta&quot;, &quot;Alberta&quot;, &quot;Albert...
-## $ project_name               &lt;chr&gt; &quot;Optimist Wind Energy&quot;, &quot;Castle River Wi...
-## $ total_project_capacity_mw  &lt;dbl&gt; 0.90, 44.00, 3.78, 3.78, 3.78, 3.78, 19....
-## $ turbine_identifier         &lt;chr&gt; &quot;OWE1&quot;, &quot;CRW1&quot;, &quot;WWT1&quot;, &quot;WWT2&quot;, &quot;WWT3&quot;, ...
-## $ turbine_number_in_project  &lt;chr&gt; &quot;1/2&quot;, &quot;1/60&quot;, &quot;1/6&quot;, &quot;2/6&quot;, &quot;3/6&quot;, &quot;4/6...
-## $ turbine_rated_capacity_k_w &lt;dbl&gt; 150, 600, 600, 600, 600, 660, 1300, 1300...
-## $ rotor_diameter_m           &lt;dbl&gt; 23, 44, 44, 44, 44, 47, 60, 60, 60, 60, ...
-## $ hub_height_m               &lt;dbl&gt; 30, 40, 50, 50, 50, 50, 46, 46, 46, 46, ...
-## $ manufacturer               &lt;chr&gt; &quot;Bonus&quot;, &quot;Vestas&quot;, &quot;Vestas&quot;, &quot;Vestas&quot;, &quot;...
-## $ model                      &lt;chr&gt; &quot;AN 150/30&quot;, &quot;V44/600&quot;, &quot;V44/600&quot;, &quot;V44/...
-## $ commissioning_date         &lt;chr&gt; &quot;1993&quot;, &quot;1997&quot;, &quot;1998&quot;, &quot;1998&quot;, &quot;1998&quot;, ...
-## $ latitude                   &lt;dbl&gt; 49.52535, 49.51264, 49.23307, 49.23303, ...
-## $ longitude                  &lt;dbl&gt; -114.0548, -114.0357, -113.6549, -113.63...
-## $ notes                      &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ...</code></pre>
-<p>We have turbine capacity and want to build a model around that.</p>
-<div id="build-models" class="section level2">
-<h2>Build models</h2>
-</div>
-<div id="explore-results" class="section level2">
-<h2>Explore results</h2>
-</div>
+\]</span></p>
 </div>
