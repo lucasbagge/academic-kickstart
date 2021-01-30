@@ -1,0 +1,232 @@
+---
+title: Introduction to machine learning - KNN
+author: Lucas Bagge
+date: '2020-11-18'
+slug: introduction-to-machine-learning-knn
+categories: 
+  - knn
+  - ML
+tags:
+  - ML
+  - KNN
+subtitle: 'Knn algoritme'
+summary: 'In this multiple series I gonna explore different machine learnin algoritmes.'
+authors: []
+lastmod: '2020-05-22T14:42:57+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>I have decided on making a series of blog post about Machine Learning and the different algoritme.</p>
+<p>In this post I will go though <strong>K-Nearest Neighbors (Knn)</strong> which can be used for classification or prediction. The algoritme relies on similar record in the data and we use this to derive a classification for new records.</p>
+<p>I will explain how similarity is detemrined, how the number of neighbors is chosen, and how
+a model is being computed. furthere I will discuss the advantages and weaknesses of the
+method.</p>
+</div>
+<div id="knn-classifier" class="section level1">
+<h1>Knn classifier</h1>
+<p>The idea behind knn algoritme is to identify <em>k</em> record in the data that are
+similar to a new records that one whish to classify. These neighbor will be
+used to classify a new record into a class. So we are looking for some similarity
+in the data.</p>
+<p>The algoritme dosen make assumptions on the relationship between the classes, <span class="math inline">\(Y\)</span>
+and the predictors <span class="math inline">\(X_1,X_2,...,X_n\)</span>. It is a nonparametric meaning it
+does not involve estiamtion of parameters in a function such as the linear
+regression.</p>
+<p>An important aspect is how to measure the distance! A popular measure is
+<strong>Euclidean distance</strong> which is given by:</p>
+<p><span class="math display">\[
+\sqrt{(x_1-u_1)^2 + (x_2-u_2)^2 + ... + (x_p-u_p)^2}
+\]</span>
+When the distance has been calculated we need to assign a rule for the classes
+based on the neighbors. The simplest case is k=1, where we look at the closes
+neighbor and classify the record as the same as the nearest.</p>
+<div id="chosing-k" class="section level2">
+<h2>Chosing k</h2>
+<p>It could be tempting to choose k=1 all the same but here one risk to fit the model
+to noise. On the other side if k is to high we might miss out on capturing
+patteren in the data. So we need to balance it and it is complely based on
+the data. We should choose k with the best classification performance.</p>
+</div>
+<div id="advantages-and-shortcomings" class="section level2">
+<h2>Advantages and shortcomings</h2>
+<p>The main advantages for the Knn algoritme is how simple it is to understand.</p>
+<p>The big shortcomings is that the number of records can increase exponentially
+with the numner of predictors. It is because the expected distance to
+the nearst neighbor goes up exponentially with the number of predictors. It
+is way one seek to reduce the nummber of predictors.</p>
+</div>
+</div>
+<div id="model" class="section level1">
+<h1>Model</h1>
+<p>For illustration purpose I want to implement the model in the <code>tidymodels</code>
+framwork.</p>
+<div id="data" class="section level2">
+<h2>Data</h2>
+<pre class="r"><code>data(bivariate)
+glimpse(bivariate_train)</code></pre>
+<pre><code>## Rows: 1,009
+## Columns: 3
+## $ A     &lt;dbl&gt; 3278.7256, 1727.4104, 1194.9320, 1027.2222, 1035.6077, 1433.918…
+## $ B     &lt;dbl&gt; 154.89876, 84.56460, 101.09107, 68.71062, 73.40559, 79.47569, 6…
+## $ Class &lt;fct&gt; One, Two, One, Two, One, One, One, Two, Two, Two, Two, One, Two…</code></pre>
+<pre class="r"><code>df &lt;- tq_get(&quot;ORSTED.CO&quot;, get = &quot;stock.prices&quot;, from = &quot; 1990-01-01&quot;)
+df %&gt;% glimpse()</code></pre>
+<pre><code>## Rows: 1,163
+## Columns: 8
+## $ symbol   &lt;chr&gt; &quot;ORSTED.CO&quot;, &quot;ORSTED.CO&quot;, &quot;ORSTED.CO&quot;, &quot;ORSTED.CO&quot;, &quot;ORSTED.…
+## $ date     &lt;date&gt; 2016-06-09, 2016-06-10, 2016-06-13, 2016-06-14, 2016-06-15,…
+## $ open     &lt;dbl&gt; 255.0, 256.0, 245.0, 242.0, 250.0, 246.1, 250.8, 255.0, 256.…
+## $ high     &lt;dbl&gt; 262.8, 259.6, 249.9, 249.4, 255.0, 252.0, 256.5, 259.0, 258.…
+## $ low      &lt;dbl&gt; 249.9, 250.0, 238.5, 239.6, 249.7, 245.0, 250.3, 255.0, 255.…
+## $ close    &lt;dbl&gt; 258.0, 252.0, 244.0, 249.4, 253.5, 250.8, 256.5, 258.5, 257.…
+## $ volume   &lt;dbl&gt; 24880908, 3397510, 2858474, 1128944, 630679, 1907245, 284429…
+## $ adjusted &lt;dbl&gt; 237.6863, 232.1587, 224.7886, 229.7634, 233.5406, 231.0532, …</code></pre>
+<p>We will look at the closing prices as an idicator and create a new column called <code>Type</code> which
+indicate weather the stock went up or down.</p>
+<pre class="r"><code>df &lt;- df %&gt;%
+  select(date, close) %&gt;%
+  mutate(type = case_when(
+    lag(close) &lt; close ~ &quot;Up&quot;,
+    lag(close) &gt; close ~ &quot;Down&quot;,
+    TRUE ~ &quot;Other&quot;
+  )) %&gt;%
+  filter(type != &quot;Other&quot;) %&gt;%
+  mutate(across(where(is.character), as.factor))
+df %&gt;% glimpse()</code></pre>
+<pre><code>## Rows: 1,140
+## Columns: 3
+## $ date  &lt;date&gt; 2016-06-10, 2016-06-13, 2016-06-14, 2016-06-15, 2016-06-16, 20…
+## $ close &lt;dbl&gt; 252.0, 244.0, 249.4, 253.5, 250.8, 256.5, 258.5, 257.3, 258.5, …
+## $ type  &lt;fct&gt; Down, Down, Up, Up, Down, Up, Up, Down, Up, Down, Down, Down, U…</code></pre>
+</div>
+<div id="eda" class="section level2">
+<h2>EDA</h2>
+<p>We need to explore how our data look likes. Because we are having a stock
+the data is gonna be very volatile.</p>
+<pre class="r"><code>df %&gt;%
+  ggplot(aes(x = date, y = close)) +
+  geom_line()</code></pre>
+<p><img src="/post/2020-11-18-Introduction-to-knn_files/figure-html/unnamed-chunk-4-1.png" width="2400" />
+From the above plot it can be seen that that the stock has gone up.</p>
+</div>
+<div id="split-data" class="section level2">
+<h2>Split data</h2>
+<p>In the modelling path we need to split our data:</p>
+<pre class="r"><code>set.seed(4595)
+split &lt;- initial_split(df,
+  prop = 0.75,
+  strata = type
+)
+
+df_train &lt;- training(split)
+
+df_test &lt;- testing(split)</code></pre>
+</div>
+<div id="cross-validation" class="section level2">
+<h2>Cross validation</h2>
+<p>When of the thing we need as explain earlier is to choose the best <em>k</em>. For
+doing that we need to use a method called <strong>cross validation</strong>. What it
+basically mean is that we are splitting our data up it smaller paths for traning
+our data.</p>
+<pre class="r"><code>set.seed(1989)
+folds &lt;- vfold_cv(df_train, v = 5, strata = &quot;type&quot;)</code></pre>
+</div>
+<div id="recipe" class="section level2">
+<h2>Recipe</h2>
+<p>The cross validation is gonna be used later. Now we need to define our <code>recipe</code>
+which is how we are gonna preprocess our data. For this recipe we are gonna
+normalize the data and center it.</p>
+<pre class="r"><code>df_rec &lt;-
+  recipe(type ~ close, data = df_train) %&gt;%
+  # if you are planning to normalize your numerical values
+  step_normalize(all_numeric()) %&gt;%
+  # if you are planning to knn-ly fill the missing values for categorical type
+  step_center(all_predictors()) %&gt;%
+  prep()
+
+# For testing when we arrive at a final model:
+test_normalized &lt;- bake(df_rec, new_data = df_test, all_predictors())</code></pre>
+</div>
+<div id="model-1" class="section level2">
+<h2>Model</h2>
+<p>The model we are gonna build is ofcourse a knn models. As mention we don´t know
+what k should be therefore wee need to tune it. This mean we are gonna
+train our model and then we can choose the best k that gives the best results.</p>
+<pre class="r"><code>knn_mod &lt;-
+  nearest_neighbor(
+    neighbors = tune()
+  ) %&gt;% # ved 2 bruger vi Euclidean distance
+  set_engine(&quot;kknn&quot;) %&gt;%
+  set_mode(&quot;classification&quot;)</code></pre>
+<p>The tuning of our parameter is an important step and it is gonna give us
+a best guess on what we should consider as the optimal k.</p>
+<pre class="r"><code>gridvals &lt;-
+  tibble(neighbors = seq(1, 200))
+
+best_k &lt;-
+  workflow() %&gt;%
+  add_recipe(df_rec) %&gt;%
+  add_model(knn_mod) %&gt;%
+  tune_grid(folds, grid = gridvals) %&gt;%
+  collect_metrics() %&gt;%
+  filter(
+    .metric == &quot;roc_auc&quot;,
+    mean == min(mean)
+  ) %&gt;%
+  pull(neighbors)</code></pre>
+<p>From the above result we have use the grid function to make optimization on
+the resampling models to find which optimal neighbour we should choose. We
+get the best result when we have 17 neigbours so that is what we are going with.</p>
+<p>So the next next doing the same thing know with the optimal number of neighbors.</p>
+<pre class="r"><code>knn_tun_spec &lt;-
+  nearest_neighbor(neighbors = best_k) %&gt;%
+  set_engine(&quot;kknn&quot;) %&gt;%
+  set_mode(&quot;classification&quot;)
+
+knn_mult_fit &lt;-
+  workflow() %&gt;%
+  add_recipe(df_rec) %&gt;%
+  add_model(knn_tun_spec) %&gt;%
+  fit(data = df_train)
+
+knn_mult_preds &lt;-
+  knn_mult_fit %&gt;%
+  predict(df_test) %&gt;%
+  bind_cols(df_test)
+
+knn_mult_mets &lt;-
+  metrics(knn_mult_preds, truth = type, estimate = .pred_class)
+knn_mult_mets</code></pre>
+<pre><code>## # A tibble: 2 x 3
+##   .metric  .estimator .estimate
+##   &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;
+## 1 accuracy binary       0.511  
+## 2 kap      binary      -0.00519</code></pre>
+<p>Our model doesn’t´t do the best job of prediction our test set. It is understandable
+considering the nature of stocks.</p>
+</div>
+</div>
+<div id="conclusions" class="section level1">
+<h1>Conclusions</h1>
+<p>Knn is a simple at good method in making classification. It has its shortcomings
+but the simplicity is a plus.</p>
+<p>We have look at the Ørsted stock and our models didn’t do a great job in
+classify if it should go up or down.</p>
+<p>The results is not surprising given the volatility in the stock.</p>
+</div>
+<div id="links" class="section level1">
+<h1>Links</h1>
+<ul>
+<li>for getting stock data with tidy using <a href="https://cran.r-project.org/web/packages/tidyquant/vignettes/TQ01-core-functions-in-tidyquant.html"><code>tidyquant</code></a></li>
+</ul>
+</div>
